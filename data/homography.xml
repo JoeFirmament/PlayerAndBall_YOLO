@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<homography_matrix type_id="opencv-matrix">
+  <rows>3</rows>
+  <cols>3</cols>
+  <dt>d</dt>
+  <data>
+    -3.7219204482508870e+00 -3.0150891454077663e-02
+    3.8246714765138686e+03 8.0327336580441409e-15 4.9744148343624852e+00
+    -5.1852299521035393e+03 6.2123631101024509e-05
+    -3.2090537968273354e-03 1.</data></homography_matrix>
+<num_points>4</num_points>
+<point_0_image_x>1.0191627807617188e+03</point_0_image_x>
+<point_0_image_y>1.0423798828125000e+03</point_0_image_y>
+<point_0_ground_x>0.</point_0_ground_x>
+<point_0_ground_y>0.</point_0_ground_y>
+<point_1_image_x>1296.</point_1_image_x>
+<point_1_image_y>1.0423798828125000e+03</point_1_image_y>
+<point_1_ground_x>455.</point_1_ground_x>
+<point_1_ground_y>0.</point_1_ground_y>
+<point_2_image_x>6.6641857910156250e+02</point_2_image_x>
+<point_2_image_y>7.7684271240234375e+02</point_2_image_y>
+<point_2_ground_x>-910.</point_2_ground_x>
+<point_2_ground_y>910.</point_2_ground_y>
+<point_3_image_x>1.3160930175781250e+03</point_3_image_x>
+<point_3_image_y>7.1213195800781250e+02</point_3_image_y>
+<point_3_ground_x>910.</point_3_ground_x>
+<point_3_ground_y>1365.</point_3_ground_y>
+</opencv_storage>

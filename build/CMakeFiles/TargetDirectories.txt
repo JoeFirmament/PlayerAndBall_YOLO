@@ -1,0 +1,7 @@
+/home/radxa/Qworkspace/yolov8_post_basketball/build/CMakeFiles/yolov8_pose_basketball.dir
+/home/radxa/Qworkspace/yolov8_post_basketball/build/CMakeFiles/edit_cache.dir
+/home/radxa/Qworkspace/yolov8_post_basketball/build/CMakeFiles/rebuild_cache.dir
+/home/radxa/Qworkspace/yolov8_post_basketball/build/CMakeFiles/list_install_components.dir
+/home/radxa/Qworkspace/yolov8_post_basketball/build/CMakeFiles/install.dir
+/home/radxa/Qworkspace/yolov8_post_basketball/build/CMakeFiles/install/local.dir
+/home/radxa/Qworkspace/yolov8_post_basketball/build/CMakeFiles/install/strip.dir

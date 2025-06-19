@@ -1,0 +1,33 @@
+# 编译生成文件
+build/
+*.o
+*.obj
+*.so
+*.a
+*.out
+*.exe
+*.log
+
+# Python 相关
+__pycache__/
+*.pyc
+
+# 临时文件
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 数据/模型/权重大文件（如不需版本管理）
+*.rknn
+*.onnx
+*.pt
+*.bin
+*.npz
+
+# VSCode/IDE 配置
+.vscode/
+.idea/
+
+# 其他
+*.bak
