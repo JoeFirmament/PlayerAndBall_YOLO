@@ -470,8 +470,8 @@ int post_process(rknn_app_context_t *app_ctx, void *outputs, letterbox_t *letter
         float h = filterBoxes[n * 5 + 3];
         int keypoints_index = (int)filterBoxes[n * 5 + 4];
         // --- 调试打印 ---
-        printf("[DEBUG][postprocess] raw_box: n=%d, x1=%.2f, y1=%.2f, w=%.2f, h=%.2f, keypoints_index=%d, class=%d\n", n, filterBoxes[n*5+0], filterBoxes[n*5+1], w, h, keypoints_index, classId[n]);
-        printf("[DEBUG][postprocess] after_pad: x1=%.2f, y1=%.2f, w=%.2f, h=%.2f\n", x1, y1, w, h);
+        // printf("[DEBUG][postprocess] raw_box: n=%d, x1=%.2f, y1=%.2f, w=%.2f, h=%.2f, keypoints_index=%d, class=%d\n", n, filterBoxes[n*5+0], filterBoxes[n*5+1], w, h, keypoints_index, classId[n]);
+        // printf("[DEBUG][postprocess] after_pad: x1=%.2f, y1=%.2f, w=%.2f, h=%.2f\n", x1, y1, w, h);
         for (int j = 0; j < 17; ++j) {
             if (app_ctx->is_quant) {
                 #ifdef RKNPU1
@@ -504,10 +504,10 @@ int post_process(rknn_app_context_t *app_ctx, void *outputs, letterbox_t *letter
         od_results->results[last_count].box.top = (int)(clamp(y1, 0, model_in_h) / letter_box->scale);
         od_results->results[last_count].box.right = (int)(clamp(x1+w, 0, model_in_w) / letter_box->scale);
         od_results->results[last_count].box.bottom = (int)(clamp(y1+h, 0, model_in_h) / letter_box->scale);
-        printf("[DEBUG][postprocess] final_box: left=%d, top=%d, right=%d, bottom=%d, conf=%.3f, class=%d\n",
-            od_results->results[last_count].box.left, od_results->results[last_count].box.top,
-            od_results->results[last_count].box.right, od_results->results[last_count].box.bottom,
-            obj_conf, id);
+        // printf("[DEBUG][postprocess] final_box: left=%d, top=%d, right=%d, bottom=%d, conf=%.3f, class=%d\n",
+        //     od_results->results[last_count].box.left, od_results->results[last_count].box.top,
+        //     od_results->results[last_count].box.right, od_results->results[last_count].box.bottom,
+        //     obj_conf, id);
         od_results->results[last_count].prop = obj_conf;
         od_results->results[last_count].cls_id = id;
         last_count++;

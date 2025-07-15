@@ -3,12 +3,12 @@
 
 BYTETracker::BYTETracker(int frame_rate, int track_buffer)
 {
-	track_thresh = 0.5;
-	high_thresh = 0.6;
-	match_thresh = 0.8;
+	track_thresh = 0.4;  // 降低阈值以减少ID切换
+	high_thresh = 0.5;   // 降低阈值以减少ID切换
+	match_thresh = 0.7;  // 降低匹配阈值以减少ID切换
 
 	frame_id = 0;
-	max_time_lost = int(frame_rate / 30.0 * track_buffer);
+	max_time_lost = int(frame_rate / 30.0 * track_buffer * 1.5);  // 增加跟踪缓冲时间
 }
 
 BYTETracker::~BYTETracker()

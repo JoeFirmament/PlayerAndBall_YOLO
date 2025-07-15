@@ -4,9 +4,11 @@
 用途: 消除CPU↔NPU内存拷贝开销，提升推理性能
 原理: 直接在NPU内存中进行预处理，避免数据传输
 优化效果: 相比基础版本性能提升100% (比较main.camera.cc)
+
 架构设计:
 - 主线程: 使用NPU1进行姿态检测，支持零拷贝优化
 - 副线程: 使用NPU2进行篮球检测，独立运行避免资源竞争
+- 双核并行: 充分利用RK3588的双NPU核心，提升整体性能
 -------------------------------------------*/
 #include <stdint.h>
 #include <stdio.h>
@@ -31,19 +33,12 @@
 #include "im2d_type.h"
 #include "im2d_single.h"
 #include "RgaUtils.h"
-#include "letterbox_utils.h"
 
 int skeleton[38] ={16, 14, 14, 12, 17, 15, 15, 13, 12, 13, 6, 12, 7, 13, 6, 7, 6, 8, 
             7, 9, 8, 10, 9, 11, 2, 3, 1, 2, 1, 3, 2, 4, 3, 5, 4, 6, 5, 7}; 
 
 // 全局变量，用于信号处理
 bool g_running = true;
-
-// 全局变量，用于控制ByteTrack功能开关
-bool g_enable_tracking = true;
-
-// 全局变量，用于控制篮球检测功能开关
-bool g_enable_basketball_detection = true;
 
 typedef struct {
     rknn_tensor_mem* input_mem;        // NPU输入内存，直接被OpenCV Mat使用
@@ -53,7 +48,6 @@ typedef struct {
     int model_width;                   // 模型输入宽度 (640)
     int model_height;                  // 模型输入高度 (640)
     int model_channels;                // 模型输入通道数 (3)
-    letterbox_context_t letterbox_ctx; // letterbox上下文
 } zero_copy_context_t;
 
 // 添加相机标定和Homography相关的结构体
@@ -72,7 +66,7 @@ typedef struct {
 camera_mapping_t g_camera_mapping = {};
 
 // 在全局变量部分添加ByteTrack实例
-//多目标跟踪需要在连续帧之间保持目标身份
+// 设计原因: 多目标跟踪需要在连续帧之间保持目标身份，ByteTrack算法性能优秀
 BYTETracker g_byte_track;
 
 // ----------------------
@@ -175,24 +169,41 @@ static void release_zero_copy_mem(rknn_app_context_t* app_ctx, zero_copy_context
 }
 
 // 零拷贝优化的letterbox预处理，直接写入NPU内存
+// 设计原因: 传统推理需要CPU内存→NPU内存的数据拷贝，这是性能瓶颈
+// 零拷贝方案: NPU和CPU共享内存区域，OpenCV直接在NPU内存上操作，消除拷贝开销
 static int optimized_letterbox_to_npu(cv::Mat& src_mat, zero_copy_context_t* zc_ctx) {
-    // 构造零拷贝letterbox上下文
-    zero_copy_letterbox_context_t letterbox_zc_ctx;
-    letterbox_zc_ctx.input_mem = zc_ctx->input_mem;
-    letterbox_zc_ctx.input_attr = zc_ctx->input_attr;
-    letterbox_zc_ctx.model_width = zc_ctx->model_width;
-    letterbox_zc_ctx.model_height = zc_ctx->model_height;
-    letterbox_zc_ctx.model_channels = zc_ctx->model_channels;
-    letterbox_zc_ctx.letterbox_ctx = zc_ctx->letterbox_ctx;
+    int dst_width = zc_ctx->model_width;
+    int dst_height = zc_ctx->model_height;
+    int src_width = src_mat.cols;
+    int src_height = src_mat.rows;
     
-    // 使用letterbox工具函数进行预处理
-    return zero_copy_letterbox_preprocess(src_mat, &letterbox_zc_ctx);
+    // 设计原因: 计算letterbox缩放参数，确保图像比例不变
+    float scale_w = (float)dst_width / src_width;
+    float scale_h = (float)dst_height / src_height;
+    float scale = std::min(scale_w, scale_h);
+    int new_width = (int)(src_width * scale);
+    int new_height = (int)(src_height * scale);
+    int offset_x = (dst_width - new_width) / 2;
+    int offset_y = (dst_height - new_height) / 2;
+    
+    // 设计原因: 直接在NPU内存上操作，避免额外拷贝
+    uint8_t* npu_ptr = (uint8_t*)zc_ctx->input_mem->virt_addr;
+    int width_stride = zc_ctx->input_attr.w_stride;
+    // 设计原因: 以npu_ptr为起点，步幅为width_stride，创建整块Mat
+    cv::Mat dst_mat(dst_height, width_stride, CV_8UC3, npu_ptr);
+    dst_mat.setTo(cv::Scalar(114, 114, 114));
+    
+    // 设计原因: 只在有效区域进行缩放操作
+    cv::Mat roi_mat = dst_mat(cv::Rect(offset_x, offset_y, new_width, new_height));
+    cv::resize(src_mat, roi_mat, cv::Size(new_width, new_height));
+    
+    return 0;
 }
 
 // 零拷贝推理和后处理
-// 整合推理和后处理流程，减少函数调用开销
+// 设计原因: 整合推理和后处理流程，减少函数调用开销
 static int zero_copy_inference_and_postprocess(rknn_app_context_t* app_ctx, zero_copy_context_t* zc_ctx, 
-        object_detect_result_list* od_results, std::vector<Object>& objects) {
+        object_detect_result_list* od_results, std::vector<Object>& objects, float scale_x, float scale_y) {
     int ret;
     
     // 设置输入
@@ -200,9 +211,9 @@ static int zero_copy_inference_and_postprocess(rknn_app_context_t* app_ctx, zero
     input.index = 0;
     input.buf = zc_ctx->input_mem->virt_addr;
     input.size = zc_ctx->input_attr.size_with_stride;
-    input.pass_through = 1; // 直通模式，所有预处理都在CPU侧完成
-    input.type = zc_ctx->input_attr.type; // 与模型输入类型一致
-    input.fmt = zc_ctx->input_attr.fmt;   // 与模型输入格式一致
+    input.pass_through = 1; // 设计原因: 直通模式，所有预处理都在CPU侧完成
+    input.type = zc_ctx->input_attr.type; // 设计原因: 与模型输入类型一致
+    input.fmt = zc_ctx->input_attr.fmt;   // 设计原因: 与模型输入格式一致
     rknn_mem_sync(app_ctx->rknn_ctx, zc_ctx->input_mem, RKNN_MEMORY_SYNC_TO_DEVICE);
     ret = rknn_inputs_set(app_ctx->rknn_ctx, 1, &input);
     if (ret < 0) {
@@ -235,22 +246,15 @@ static int zero_copy_inference_and_postprocess(rknn_app_context_t* app_ctx, zero
     ret = post_process(app_ctx, outputs, &letter_box, 0.5, 0.4, od_results);
     rknn_outputs_release(app_ctx->rknn_ctx, app_ctx->io_num.n_output, outputs);
     
-    // 设计原因: 生成BYTETracker所需objects（使用letterbox工具函数进行反变换）
+    // 设计原因: 生成BYTETracker所需objects
     objects.clear();
     for (int i = 0; i < od_results->count; i++) {
         object_detect_result* det_result = &od_results->results[i];
         Object obj;
-        
-        // 使用letterbox工具函数进行边界框反变换
-        cv::Rect model_box(det_result->box.left, det_result->box.top,
-                          det_result->box.right - det_result->box.left,
-                          det_result->box.bottom - det_result->box.top);
-        cv::Rect original_box = letterbox_inverse_transform_bbox(model_box, &zc_ctx->letterbox_ctx);
-        
-        obj.box.x = original_box.x;
-        obj.box.y = original_box.y;
-        obj.box.width = original_box.width;
-        obj.box.height = original_box.height;
+        obj.box.x = det_result->box.left * scale_x;
+        obj.box.y = det_result->box.top * scale_y;
+        obj.box.width = (det_result->box.right - det_result->box.left) * scale_x;
+        obj.box.height = (det_result->box.bottom - det_result->box.top) * scale_y;
         obj.score = det_result->prop;
         obj.classId = det_result->cls_id;
         objects.push_back(obj);
@@ -356,16 +360,15 @@ static std::map<int, std::deque<cv::Point2f>> ankle_position_history;   // 脚�
 static const int SMOOTH_WINDOW_SIZE = 8;  // 平滑窗口大小 - 增加以减少抖动
 
 // 计算俯视角度下的脚部地面接触点 - 返回两种方法的结果
-static FootPositionResult calculate_foot_position_comparison(const float keypoints[17][2], cv::Mat& debug_frame, const object_detect_result* det_result, const letterbox_context_t* letterbox_ctx, int track_id) {
+static FootPositionResult calculate_foot_position_comparison(const float keypoints[17][2], cv::Mat& debug_frame, const object_detect_result* det_result, float scale_x, float scale_y, int track_id) {
     FootPositionResult result;
     
-    // 设计原因: 计算ROI包围框（使用letterbox工具函数进行反变换）
-    cv::Rect model_box(det_result->box.left, det_result->box.top,
-                      det_result->box.right - det_result->box.left,
-                      det_result->box.bottom - det_result->box.top);
-    cv::Rect original_box = letterbox_inverse_transform_bbox(model_box, letterbox_ctx);
-    cv::Point2f roi_bottom_center((original_box.x + original_box.x + original_box.width) * 0.5f, 
-                                 original_box.y + original_box.height);
+    // 设计原因: 计算ROI包围框
+    float bbox_left = det_result->box.left * scale_x;
+    float bbox_top = det_result->box.top * scale_y;
+    float bbox_right = det_result->box.right * scale_x;
+    float bbox_bottom = det_result->box.bottom * scale_y;
+    cv::Point2f roi_bottom_center((bbox_left + bbox_right) * 0.5f, bbox_bottom);
     
     // 设计原因: 获取关键点（COCO格式）
     cv::Point2f nose(keypoints[0][0], keypoints[0][1]);           // 鼻子
@@ -521,9 +524,9 @@ static float calculate_distance(const cv::Point2f& p1, const cv::Point2f& p2) {
 }
 
 // ----------------------
-// 篮球检测线程函数   后添加用来测试
+// 篮球检测线程函数
 // 设计原因: 双线程架构 - 主线程处理姿态检测，副线程处理篮球检测
-// 性能优化: 利用RK3588的多NPU核心，实现真正的并行处理，以后再添加进球模型检测
+// 性能优化: 利用RK3588的双NPU核心，实现真正的并行处理
 // ----------------------
 void basketball_detect_thread_func() {
     // 设计原因: 1. 加载我们优化的篮球+球员检测模型
@@ -543,10 +546,10 @@ void basketball_detect_thread_func() {
     rknn_core_mask core_mask = RKNN_NPU_CORE_2;
     ret = rknn_set_core_mask(basketball_ctx.rknn_ctx, core_mask);
     if (ret != 0) {
-        // printf("[basketball][error] rknn_set_core_mask 失败! ret=%d\n", ret);
+        printf("[basketball][error] rknn_set_core_mask 失败! ret=%d\n", ret);
     }
 
-    // 推理主循环
+    // 设计原因: 2. 推理主循环
     while (basketball_thread_running) {
         cv::Mat input_img;
         {
@@ -557,11 +560,11 @@ void basketball_detect_thread_func() {
             basketball_frame_queue.pop();
         }
         
-        // 输入图像已经是letterbox处理后的640x640，只需BGR->RGB转换
+        // 设计原因: 输入图像已经是letterbox处理后的640x640，只需BGR->RGB转换
         cv::Mat rgb_img;
         cv::cvtColor(input_img, rgb_img, cv::COLOR_BGR2RGB);
         
-        //直接构造输入（无需再次letterbox）
+        // 设计原因: 2.3 直接构造输入（无需再次letterbox）
         rknn_input input;
         input.index = 0;
         input.buf = rgb_img.data;
@@ -571,14 +574,14 @@ void basketball_detect_thread_func() {
         input.pass_through = 0;
         ret = rknn_inputs_set(basketball_ctx.rknn_ctx, 1, &input);
         if (ret < 0) {
-            // printf("[basketball][error] rknn_inputs_set 失败! ret=%d\n", ret);
+            printf("[basketball][error] rknn_inputs_set 失败! ret=%d\n", ret);
             continue;
         }
         
         // 设计原因: 2.4 推理
         ret = rknn_run(basketball_ctx.rknn_ctx, NULL);
         if (ret < 0) {
-            // printf("[basketball][error] rknn_run 失败! ret=%d\n", ret);
+            printf("[basketball][error] rknn_run 失败! ret=%d\n", ret);
             continue;
         }
         
@@ -591,7 +594,7 @@ void basketball_detect_thread_func() {
         }
         ret = rknn_outputs_get(basketball_ctx.rknn_ctx, basketball_ctx.io_num.n_output, outputs, NULL);
         if (ret < 0) {
-            // printf("[basketball][error] rknn_outputs_get 失败! ret=%d\n", ret);
+            printf("[basketball][error] rknn_outputs_get 失败! ret=%d\n", ret);
             continue;
         }
         
@@ -648,11 +651,12 @@ void basketball_detect_thread_func() {
                 }
             }
         } else {
-            // printf("[basketball][error] 篮球检测后处理失败! ret=%d\n", ret);
+            printf("[basketball][error] 篮球检测后处理失败! ret=%d\n", ret);
         }
         
         rknn_outputs_release(basketball_ctx.rknn_ctx, basketball_ctx.io_num.n_output, outputs);
     }
+    // 设计原因: 3. 释放模型
     release_yolov8_pose_model(&basketball_ctx);
 }
 
@@ -775,17 +779,6 @@ int main(int argc, char **argv)
     printf("采集帧尺寸: %dx%d\n", test_frame.cols, test_frame.rows);
     printf("cap.get尺寸: %dx%d\n", (int)cap.get(cv::CAP_PROP_FRAME_WIDTH), (int)cap.get(cv::CAP_PROP_FRAME_HEIGHT));
     
-    // 设计原因: 初始化letterbox上下文
-    init_letterbox_context(&zero_copy_ctx.letterbox_ctx, 
-                          test_frame.cols, test_frame.rows,  // 原始图像尺寸
-                          rknn_app_ctx.model_width, rknn_app_ctx.model_height,  // 模型输入尺寸
-                          true);  // 启用调试模式
-    
-    // 验证letterbox变换准确性
-    if (validate_letterbox_transform(&zero_copy_ctx.letterbox_ctx) != 0) {
-        printf("警告: letterbox变换验证失败，可能影响坐标精度\n");
-    }
-    
     // 设计原因: 创建窗口并验证
     const char* WINDOW_NAME = "YOLOv8 Pose Basketball";
     cv::namedWindow(WINDOW_NAME, cv::WINDOW_NORMAL);
@@ -821,10 +814,16 @@ int main(int argc, char **argv)
         int yolo_width = zero_copy_ctx.model_width;
         int yolo_height = zero_copy_ctx.model_height;
         
-        // 设计原因: 使用letterbox工具函数进行预处理
+        // 设计原因: 直接将原始图像resize到YOLO输入尺寸
         int64_t t2_start = getCurrentTimeUs();
-        ret = optimized_letterbox_to_npu(frame, &zero_copy_ctx);
+        cv::resize(frame, yolo_input_cv, cv::Size(yolo_width, yolo_height));
         int64_t t2 = getCurrentTimeUs();
+        
+        // 设计原因: RGA resize仅在需要时使用（这里注释掉以提升性能）
+        // int64_t t3_rga_start = t3_cv_start;
+        // int64_t t3_rga = t3_cv;
+        // --- 优化的预处理 - 直接写入NPU内存 ---
+        ret = optimized_letterbox_to_npu(yolo_input_cv, &zero_copy_ctx);
         if (ret != 0) {
             printf("预处理失败\n");
             continue;
@@ -834,28 +833,25 @@ int main(int argc, char **argv)
         object_detect_result_list od_results;
         std::vector<Object> objects;
         int64_t t3 = getCurrentTimeUs();
-        
-        ret = zero_copy_inference_and_postprocess(&rknn_app_ctx, &zero_copy_ctx, &od_results, objects);
+        float scale_x = (float)frame.cols / (float)yolo_width;
+        float scale_y = (float)frame.rows / (float)yolo_height;
+        ret = zero_copy_inference_and_postprocess(&rknn_app_ctx, &zero_copy_ctx, &od_results, objects, scale_x, scale_y);
         int64_t t4 = getCurrentTimeUs();
         if (ret != 0) {
             printf("推理失败\n");
             continue;
         }
-        // 设计原因: 跟踪（可通过t键开关）
+        // 设计原因: 跟踪
         int64_t t_track0 = getCurrentTimeUs();
-        std::vector<STrack> tracks;
-        if (g_enable_tracking) {
-            tracks = g_byte_track.update(objects);
-        }
+        std::vector<STrack> tracks = g_byte_track.update(objects);
         int64_t t_track1 = getCurrentTimeUs();
         
         // 设计原因: 绘制结果 - 结合姿态检测与跟踪
         cv::Mat result_frame = frame.clone();
         
-        if (g_enable_tracking && !tracks.empty()) {
-            // 跟踪模式：建立track与检测结果的对应关系
-            std::map<int, int> track_to_detection;  // track_index -> detection_index
-            for (int track_idx = 0; track_idx < tracks.size(); track_idx++) {
+        // 建立track与检测结果的对应关系
+        std::map<int, int> track_to_detection;  // track_index -> detection_index
+        for (int track_idx = 0; track_idx < tracks.size(); track_idx++) {
             const STrack& track = tracks[track_idx];
             cv::Rect_<float> track_rect(track.tlbr[0], track.tlbr[1], 
                                        track.tlbr[2] - track.tlbr[0], 
@@ -867,13 +863,10 @@ int main(int argc, char **argv)
             
             for (int i = 0; i < od_results.count; i++) {
                 object_detect_result *det_result = &(od_results.results[i]);
-                
-                // 使用letterbox工具函数进行边界框反变换
-                cv::Rect model_box(det_result->box.left, det_result->box.top,
-                                  det_result->box.right - det_result->box.left,
-                                  det_result->box.bottom - det_result->box.top);
-                cv::Rect original_box = letterbox_inverse_transform_bbox(model_box, &zero_copy_ctx.letterbox_ctx);
-                cv::Rect_<float> det_rect(original_box.x, original_box.y, original_box.width, original_box.height);
+                cv::Rect_<float> det_rect(det_result->box.left * scale_x, 
+                                         det_result->box.top * scale_y,
+                                         (det_result->box.right - det_result->box.left) * scale_x,
+                                         (det_result->box.bottom - det_result->box.top) * scale_y);
                 
                 // 计算IoU
                 float intersection_area = (track_rect & det_rect).area();
@@ -912,9 +905,14 @@ int main(int argc, char **argv)
                 int det_idx = track_to_detection[track_idx];
                 object_detect_result *det_result = &(od_results.results[det_idx]);
                 
-                // 转换关键点坐标（使用letterbox工具函数进行反变换）
+                // 转换关键点坐标
                 float keypoints[17][2];
-                letterbox_inverse_transform_keypoints(det_result->keypoints, keypoints, 17, &zero_copy_ctx.letterbox_ctx);
+                for (int j = 0; j < 17; j++) {
+                    keypoints[j][0] = det_result->keypoints[j][0] * scale_x;
+                    keypoints[j][1] = det_result->keypoints[j][1] * scale_y;
+                    keypoints[j][0] = std::max(0.0f, std::min(keypoints[j][0], (float)(frame.cols - 1)));
+                    keypoints[j][1] = std::max(0.0f, std::min(keypoints[j][1], (float)(frame.rows - 1)));
+                }
                 
                 // 绘制骨架
                 for (int j = 0; j < 38/2; ++j) {
@@ -933,7 +931,7 @@ int main(int argc, char **argv)
                 
                 // 使用新的函数计算两种方法的脚部位置
                 FootPositionResult foot_result = calculate_foot_position_comparison(
-                    keypoints, result_frame, det_result, &zero_copy_ctx.letterbox_ctx, track_id);
+                    keypoints, result_frame, det_result, scale_x, scale_y, track_id);
                 
                 // 计算两种方法的地面坐标
                 cv::Point2f ground_point_roi = map_to_ground(foot_result.roi_method, result_frame);
@@ -974,70 +972,8 @@ int main(int argc, char **argv)
                 }
             }
         }
-        } else {
-            // 非跟踪模式：直接绘制检测结果
-            for (int i = 0; i < od_results.count; i++) {
-                object_detect_result *det_result = &(od_results.results[i]);
-                
-                // 绘制检测框（使用letterbox工具函数进行反变换）
-                cv::Rect model_box(det_result->box.left, det_result->box.top,
-                                  det_result->box.right - det_result->box.left,
-                                  det_result->box.bottom - det_result->box.top);
-                cv::Rect bbox = letterbox_inverse_transform_bbox(model_box, &zero_copy_ctx.letterbox_ctx);
-                cv::rectangle(result_frame, bbox, cv::Scalar(255, 0, 0), 2);  // 蓝色框表示检测模式
-                
-                // 显示检测框标签
-                char det_text[32];
-                sprintf(det_text, "Det:%.2f", det_result->prop);
-                cv::putText(result_frame, det_text, cv::Point(bbox.x, bbox.y-5), 
-                           cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 0, 0), 2);
-                
-                // 转换关键点坐标（使用letterbox工具函数进行反变换）
-                float keypoints[17][2];
-                letterbox_inverse_transform_keypoints(det_result->keypoints, keypoints, 17, &zero_copy_ctx.letterbox_ctx);
-                
-                // 绘制骨架
-                for (int j = 0; j < 38/2; ++j) {
-                    cv::line(result_frame, 
-                        cv::Point((int)(keypoints[skeleton[2*j]-1][0]), (int)(keypoints[skeleton[2*j]-1][1])),
-                        cv::Point((int)(keypoints[skeleton[2*j+1]-1][0]), (int)(keypoints[skeleton[2*j+1]-1][1])),
-                        cv::Scalar(0, 128, 255), 2);
-                }
-                
-                // 绘制关键点
-                for (int j = 0; j < 17; ++j) {
-                    cv::circle(result_frame, 
-                        cv::Point((int)(keypoints[j][0]), (int)(keypoints[j][1])),
-                        3, cv::Scalar(255, 255, 0), -1);
-                }
-                
-                // 计算并显示地面坐标（使用临时ID）
-                FootPositionResult foot_result = calculate_foot_position_comparison(
-                    keypoints, result_frame, det_result, &zero_copy_ctx.letterbox_ctx, i);  // 使用检测索引作为临时ID
-                
-                cv::Point2f ground_point_roi = map_to_ground(foot_result.roi_method, result_frame);
-                cv::Point2f ground_point_ankle = map_to_ground(foot_result.ankle_method, result_frame);
-                
-                // 显示地面坐标
-                int text_start_y = bbox.y + bbox.height + 20;
-                if (ground_point_roi.x >= 0 && ground_point_roi.y >= 0) {
-                    char roi_text[256];
-                    sprintf(roi_text, "ROI: (%.0f,%.0f)mm", ground_point_roi.x, ground_point_roi.y);
-                    cv::putText(result_frame, roi_text, cv::Point(bbox.x, text_start_y), 
-                               cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 255), 2);
-                }
-                
-                if (ground_point_ankle.x >= 0 && ground_point_ankle.y >= 0) {
-                    char ankle_text[256];
-                    sprintf(ankle_text, "ANKLE: (%.0f,%.0f)mm", ground_point_ankle.x, ground_point_ankle.y);
-                    cv::putText(result_frame, ankle_text, cv::Point(bbox.x, text_start_y + 25), 
-                               cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 0), 2);
-                }
-            }
-        }
-        
-        // --- 取出篮球检测结果并画框（可通过b键开关）---
-        if (g_enable_basketball_detection) {
+        // --- 取出篮球检测结果并画框 ---
+        {
             std::lock_guard<std::mutex> lock(basketball_result_mutex);
             if (!basketball_result_queue.empty()) {
                 BasketballDetectResult result = basketball_result_queue.back();
@@ -1052,9 +988,36 @@ int main(int argc, char **argv)
                 if (current_time - result.timestamp > 100000) { // 100ms
                     // 丢弃过时结果，不显示
                 } else {
-                    // 使用letterbox工具函数进行篮球检测结果的坐标转换
-                    cv::Rect model_bbox((int)result.x, (int)result.y, (int)result.w, (int)result.h);
-                    cv::Rect bbox = letterbox_inverse_transform_bbox(model_bbox, &zero_copy_ctx.letterbox_ctx);
+                    // 正确的letterbox逆变换：需要考虑offset
+                    // 计算letterbox参数（与预处理时相同的逻辑）
+                    int src_width = frame.cols;   // 1920
+                    int src_height = frame.rows;  // 1080
+                    int dst_width = zero_copy_ctx.model_width;   // 640
+                    int dst_height = zero_copy_ctx.model_height; // 640
+                    
+                    float scale_w = (float)dst_width / src_width;   // 640/1920 = 0.333
+                    float scale_h = (float)dst_height / src_height; // 640/1080 = 0.593
+                    float scale = std::min(scale_w, scale_h);       // 0.333
+                    int new_width = (int)(src_width * scale);       // 1920 * 0.333 = 640
+                    int new_height = (int)(src_height * scale);     // 1080 * 0.333 = 360
+                    int offset_x = (dst_width - new_width) / 2;     // (640-640)/2 = 0
+                    int offset_y = (dst_height - new_height) / 2;   // (640-360)/2 = 140
+                    
+                    // 篮球检测结果的坐标转换：letterbox坐标 → 原始图像坐标
+                    // 步骤1: 减去letterbox的offset
+                    // 步骤2: 除以letterbox的scale
+                    float x1 = (result.x - offset_x) / scale;
+                    float y1 = (result.y - offset_y) / scale;
+                    float x2 = (result.x + result.w - offset_x) / scale;
+                    float y2 = (result.y + result.h - offset_y) / scale;
+                    
+                    // 设计原因: 限制在原始图像范围内
+                    x1 = std::max(0.0f, std::min(x1, (float)frame.cols));
+                    y1 = std::max(0.0f, std::min(y1, (float)frame.rows));
+                    x2 = std::max(0.0f, std::min(x2, (float)frame.cols));
+                    y2 = std::max(0.0f, std::min(y2, (float)frame.rows));
+                    
+                    cv::Rect bbox((int)x1, (int)y1, (int)(x2-x1), (int)(y2-y1));
                     
                     // 设计原因: 只绘制有效的检测框
                     if (bbox.width > 0 && bbox.height > 0) {
@@ -1072,55 +1035,35 @@ int main(int argc, char **argv)
         char perf_text[256];
         sprintf(perf_text, "FPS: %.1f", frame_count * 1000000.0f / total_time);
         cv::putText(result_frame, perf_text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
-        
-        // 显示ByteTrack状态
-        char track_status[128];
-        sprintf(track_status, "ByteTrack: %s (Press 'T' to toggle)", g_enable_tracking ? "ON" : "OFF");
-        cv::Scalar track_color = g_enable_tracking ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
-        cv::putText(result_frame, track_status, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.7, track_color, 2);
-        
-        // 显示篮球检测状态
-        char basketball_status[128];
-        sprintf(basketball_status, "Basketball Detection: %s (Press 'B' to toggle)", g_enable_basketball_detection ? "ON" : "OFF");
-        cv::Scalar basketball_color = g_enable_basketball_detection ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
-        cv::putText(result_frame, basketball_status, cv::Point(10, 90), cv::FONT_HERSHEY_SIMPLEX, 0.7, basketball_color, 2);
         cv::imshow(WINDOW_NAME, result_frame);
         int key = cv::waitKey(1);
         if (key == 27) { // ESC键
             break;
-        } else if (key == 't' || key == 'T') { // T键切换ByteTrack
-            g_enable_tracking = !g_enable_tracking;
-            printf("ByteTrack: %s\n", g_enable_tracking ? "ON" : "OFF");
-        } else if (key == 'b' || key == 'B') { // B键切换篮球检测
-            g_enable_basketball_detection = !g_enable_basketball_detection;
-            printf("Basketball Detection: %s\n", g_enable_basketball_detection ? "ON" : "OFF");
         }
         int64_t frame_time = t5 - t0;
         total_time += frame_time;
         frame_count++;
 
-        // --- 在此处将 letterbox处理后的图像 送入篮球检测队列（可通过b键开关）---
-        if (g_enable_basketball_detection) {
+        // --- 在此处将 letterbox处理后的图像 送入篮球检测队列 ---
+        {
             std::lock_guard<std::mutex> lock(basketball_queue_mutex);
             // 设计原因: 增加队列长度到10，提高处理能力
             if (basketball_frame_queue.size() < 10) {
-                // 设计原因: 对原始图像进行letterbox处理后传递给篮球检测线程
-                cv::Mat basketball_input;
-                letterbox_preprocess(frame, basketball_input, &zero_copy_ctx.letterbox_ctx);
-                basketball_frame_queue.push(basketball_input);
+                // 设计原因: 传递已经letterbox处理的图像（与姿态检测相同的输入）
+                basketball_frame_queue.push(yolo_input_cv.clone());
                 basketball_queue_cv.notify_one();
             }
         }
     } // 主循环结束
 
-    // 释放资源
+    // 设计原因: 释放资源
     cap.release();
     cv::destroyAllWindows();
     release_zero_copy_mem(&rknn_app_ctx, &zero_copy_ctx);
     release_yolov8_pose_model(&rknn_app_ctx);
     deinit_post_process();
 
-    // 退出前安全关闭篮球检测线程
+    // 设计原因: 退出前安全关闭篮球检测线程
     basketball_thread_running = false;
     basketball_queue_cv.notify_all();
     if (basketball_detect_thread.joinable()) {
