@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build System
 
-使用CMake构建系统，支持RK3588平台的双NPU核心优化：
+使用CMake构建系统，支持RK3588平台的双摄像头独立检测架构：
 
 ```bash
 # 编译项目
@@ -12,70 +12,127 @@ mkdir -p build && cd build
 cmake ..
 make -j$(nproc)
 
-# 运行主程序（使用默认标定文件）
-./yolov8_pose_basketball ../models/Q_yolov8_pose.rknn
+# 新架构 - 双摄像头独立检测
+./yolov8_pose_only ../models/Q_yolov8_pose.rknn                    # 纯姿态检测 (摄像头1)
+./yolov8_pose_only ../models/Q_yolov8_pose.rknn ../data/2025_7_11pm.json  # 指定标定文件
 
-# 运行主程序（指定标定文件）
-./yolov8_pose_basketball ../models/Q_yolov8_pose.rknn ../data/2025_7_11pm.json
+# 篮筐篮球检测程序 (两个版本可选)
+./rim_basketball_detector_v2 ../models/Q_Rim_Basketball_724_JZ.rknn      # 复杂版 (基于modern_dual_comparator.py)
+./rim_basketball_detector_simple ../models/Q_Rim_Basketball_724_JZ.rknn  # 简化版 (基于ref/rknn_yolov8_ref)
+./rim_basketball_detector_simple ../models/Q_Rim_Basketball_724_JZ.rknn 0 # 指定摄像头设备
 
-# 运行测试程序
-./test_basketball_rknn
+# 双摄像头双线程检测系统 (推荐)
+./dual_camera_detector ../models/Q_yolov8_pose.rknn ../models/Q_Rim_Basketball_724_JZ.rknn
+./dual_camera_detector ../models/Q_yolov8_pose.rknn ../models/Q_Rim_Basketball_724_JZ.rknn ../data/2025_7_11pm.json 0 2
+
+# 原有版本 (兼容保留)
+./yolov8_pose_basketball ../models/Q_yolov8_pose.rknn           # 原双线程版本
+./test_basketball_rknn                                          # 篮球检测测试程序
+./rga_resize_test                                               # RGA性能测试
 ```
 
 ## 核心架构
 
-### 双线程架构
-- **主线程**: 使用NPU1进行YOLOv8姿态检测，零拷贝优化
-- **副线程**: 使用NPU2进行篮球检测，独立运行避免资源竞争
-- **线程安全**: 使用queue + mutex + condition_variable进行线程间通信
+### 双摄像头双线程检测架构 (推荐)
+- **程序**: `dual_camera_detector` - 集成检测系统
+  - **线程1**: 姿态检测 (摄像头0, NPU1)
+    - 模型: `Q_yolov8_pose.rknn`
+    - 功能: YOLOv8姿态检测 + ByteTrack跟踪 + 坐标映射
+  - **线程2**: 篮筐篮球检测 (摄像头2, NPU2)
+    - 模型: `Q_Rim_Basketball_724_JZ.rknn`
+    - 功能: 篮筐检测 + 篮球检测 + ROI分析
+  - **显示**: 支持拼接显示或分别显示模式
+
+### 双摄像头独立检测架构 (调试用)
+- **程序1**: `yolov8_pose_only` - 纯姿态检测系统
+  - 摄像头: 主摄像头 (`/dev/video0`)
+  - 模型: `Q_yolov8_pose.rknn`
+  - 功能: 姿态检测 + ByteTrack跟踪 + 坐标映射
+  - NPU: 单线程，使用NPU资源进行姿态推理
+
+- **程序2**: `rim_basketball_detector_v2` - 篮筐篮球检测系统
+  - 摄像头: 副摄像头 (`/dev/video2` 或指定设备)
+  - 模型: `Q_Rim_Basketball_724_JZ.rknn`
+  - 功能: 篮筐检测 + 篮球检测 + ROI分析
+  - NPU: 独立使用NPU资源进行目标检测
 
 ### 零拷贝优化
 - NPU内存直接访问，消除CPU↔NPU数据拷贝开销
 - 性能相比基础版本提升100%
-- 关键函数：`init_zero_copy_mem()`, `optimized_letterbox_to_npu()`
+- 关键函数：`init_zero_copy_mem()`, `letterbox_resize_to_npu()`
 
 ### 关键组件
 
-1. **姿态检测模块** (`src/yolov8-pose.cc`, `src/postprocess.cc`)
+1. **姿态检测模块** (`src/main_pose_only.cc`, `src/postprocess.cc`)
    - YOLOv8 pose estimation
    - 17个关键点检测（COCO格式）
-   - 零拷贝推理优化
+   - 零拷贝推理优化，移除篮球检测功能
 
-2. **篮球检测模块** (`src/basketball_postprocess.cpp`)
-   - 专门的2类检测（player, basketball）
-   - 独立线程运行在NPU2
-   - 置信度阈值：0.5
+2. **篮筐篮球检测模块** (`src/rim_basketball_detector_updated.cc`)
+   - 2类检测：rim(篮筐), basketball(篮球)
+   - 基于`modern_dual_comparator.py`验证的后处理逻辑
+   - ROI位置分析和距离计算
 
 3. **多目标跟踪** (`src/BYTETracker.cpp`, `src/STrack.cpp`)
-   - ByteTrack算法实现
+   - ByteTrack算法实现，仅用于姿态检测程序
    - 卡尔曼滤波器用于状态估计
    - 匈牙利算法用于数据关联
 
 4. **坐标映射系统**
    - Homography变换：图像坐标→真实世界坐标
    - 标定数据存储在JSON文件中
-   - 支持篮球场地实际位置测量
+   - 仅用于姿态检测程序的球员位置测量
+
+### 架构优势
+- **资源无冲突**: 两个程序独立运行，避免NPU资源竞争
+- **功能专业化**: 每个程序专注于特定检测任务，提高准确性
+- **易于调试**: 可独立调试和优化每个检测模块
+- **灵活部署**: 可根据需要选择运行单个或多个程序
 
 ## 数据流程
 
-1. **图像采集**: 摄像头 → 1920x1080 MJPEG格式
+### 姿态检测程序流程 (`yolov8_pose_only`)
+1. **图像采集**: 主摄像头 → 1920x1080 MJPEG格式
 2. **预处理**: letterbox resize → 640x640，直接写入NPU内存
-3. **推理**: 
-   - 主线程：姿态检测（NPU1）
-   - 副线程：篮球检测（NPU2）
+3. **推理**: 使用NPU进行YOLOv8姿态检测
 4. **后处理**: 
    - 关键点提取和骨架绘制
-   - 多目标跟踪
-   - 坐标映射转换
-5. **结果融合**: 合并两个线程的检测结果进行显示
+   - ByteTrack多目标跟踪
+   - Homography坐标映射
+5. **显示**: 实时显示姿态检测和跟踪结果
+
+### 篮筐篮球检测程序流程 (`rim_basketball_detector_v2`)
+1. **图像采集**: 副摄像头 → 1920x1080 MJPEG格式
+2. **预处理**: letterbox resize → 640x640，直接写入NPU内存
+3. **推理**: 使用NPU进行篮筐和篮球检测
+4. **后处理**: 
+   - 基于`modern_dual_comparator.py`的DFL解码
+   - NMS处理和坐标转换
+   - ROI分析和距离计算
+5. **显示**: 实时显示检测框、ROI信息和统计数据
 
 ## 重要文件
 
-- `src/main_camera_optimized.cc`: 主程序，包含完整的双线程架构
+### 新架构文件
+- `src/dual_camera_detector.cc`: 双摄像头双线程集成检测系统 (推荐)
+- `src/main_pose_only.cc`: 纯姿态检测程序，单线程零拷贝优化
+- `src/rim_basketball_detector_updated.cc`: 篮筐篮球检测程序，独立运行
+- `src/rim_basketball_postprocess.cpp`: 篮筐篮球后处理模块 (复杂版，DFL解码)
+- `src/rim_basketball_postprocess_simple.cpp`: 篮筐篮球后处理模块 (简化版，直接回归)
+- `include/rim_basketball_postprocess.h`: 篮筐篮球检测接口定义
+
+### 模型文件
+- `models/Q_yolov8_pose.rknn`: 姿态检测模型
+- `models/Q_Rim_Basketball_724_JZ.rknn`: 篮筐篮球检测模型 (新)
+
+### 配置和验证文件
 - `data/2025_7_11pm.json`: Homography标定数据
-- `models/`: RKNN模型文件目录
-  - `Q_yolov8_pose.rknn`: 姿态检测模型
-  - `Q_Player_Ball_8n_4090_Drun_500E.rknn`: 篮球检测模型
+- `ref/modern_dual_comparator.py`: 篮筐篮球模型后处理验证工具
+- `todo_multiframe_fusion.md`: 多帧融合开发计划
+
+### 原有架构文件 (兼容保留)
+- `src/main_camera_optimized.cc`: 原双线程架构主程序
+- `src/basketball_postprocess.cpp`: 原篮球检测后处理模块
 
 ## 性能优化特性
 
@@ -101,15 +158,51 @@ make -j$(nproc)
 
 ## 按键控制
 
-程序运行时支持以下按键控制：
-
+### 姿态检测程序 (`yolov8_pose_only`)
 - **ESC键**: 退出程序
 - **T键**: 切换ByteTrack多目标跟踪功能开关
   - 开启时：显示绿色跟踪框和ID号码
   - 关闭时：显示蓝色检测框和置信度
-- **B键**: 切换篮球检测功能开关
-  - 开启时：显示红色篮球检测框
-  - 关闭时：不显示篮球检测结果，节省NPU2资源
+
+### 双摄像头双线程程序 (`dual_camera_detector`)
+- **ESC键**: 退出程序
+- **T键**: 切换ByteTrack多目标跟踪功能开关
+- **C键**: 切换显示模式 (拼接显示/分别显示)
+  - 拼接显示：两个摄像头结果水平拼接，单窗口显示
+  - 分别显示：两个摄像头结果分别显示在独立窗口
+
+### 篮筐篮球检测程序 (`rim_basketball_detector_v2`)
+- **ESC键**: 退出程序
+- **S键**: 截图保存当前检测结果
+  - 保存格式：`screenshot_XXXX.jpg`
+  - 包含检测框、置信度和ROI分析信息
+
+## 性能调试与分析
+
+### 性能测试工具
+- `test_rga_performance.sh`: RGA硬件加速性能测试脚本  
+- `./rga_resize_test`: RGA resize性能基准测试
+- 内置FPS统计：主程序实时显示帧率和延迟
+
+### 调试模式
+程序内置多种调试输出：
+- NPU内存分配状态
+- 线程队列长度监控
+- 坐标映射转换结果
+- 检测框置信度分布
+
+### 常见问题排查
+- **NPU权限**: 需要root权限或加入video用户组
+- **模型版本**: 确保使用RK3588对应的.rknn模型
+- **内存不足**: 检查NPU内存分配，调整队列大小
+- **摄像头兼容性**: 验证V4L2设备支持MJPEG格式
+
+## 待实现功能
+
+基于`todo_multiframe_fusion.md`的开发计划：
+- **多帧融合**: 滑动窗口平均、置信度投票、连续帧确认
+- **轨迹平滑**: 结合ByteTrack进行目标一致性优化  
+- **去抖动**: 误检过滤和轨迹稳定化算法
 
 ## 注意事项
 
