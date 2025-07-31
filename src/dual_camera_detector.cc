@@ -132,6 +132,123 @@ static int64_t getCurrentTimeUs() {
     return tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
+// 篮筐篮球检测模型初始化函数
+static int init_rim_basketball_model(const char* model_path, rknn_app_context_t* app_ctx) {
+    int ret;
+    
+    printf("加载篮筐篮球检测模型: %s\n", model_path);
+    
+    // 读取模型文件
+    FILE* fp = fopen(model_path, "rb");
+    if (!fp) {
+        printf("❌ 无法打开模型文件: %s\n", model_path);
+        return -1;
+    }
+    
+    fseek(fp, 0, SEEK_END);
+    int model_len = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    
+    void* model_data = malloc(model_len);
+    if (!model_data) {
+        printf("❌ 分配内存失败\n");
+        fclose(fp);
+        return -1;
+    }
+    
+    if (fread(model_data, 1, model_len, fp) != model_len) {
+        printf("❌ 读取模型文件失败\n");
+        free(model_data);
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+    
+    // 初始化RKNN上下文
+    ret = rknn_init(&app_ctx->rknn_ctx, model_data, model_len, 0, NULL);
+    free(model_data);
+    
+    if (ret < 0) {
+        printf("❌ RKNN初始化失败! ret=%d\n", ret);
+        return -1;
+    }
+    
+    // 获取模型输入输出信息
+    ret = rknn_query(app_ctx->rknn_ctx, RKNN_QUERY_IN_OUT_NUM, &app_ctx->io_num, sizeof(app_ctx->io_num));
+    if (ret != RKNN_SUCC) {
+        printf("❌ 查询输入输出数量失败! ret=%d\n", ret);
+        return -1;
+    }
+    
+    printf("篮筐篮球模型输入数量: %d, 输出数量: %d\n", app_ctx->io_num.n_input, app_ctx->io_num.n_output);
+    
+    // 获取输入属性
+    app_ctx->input_attrs = (rknn_tensor_attr*)malloc(app_ctx->io_num.n_input * sizeof(rknn_tensor_attr));
+    memset(app_ctx->input_attrs, 0, app_ctx->io_num.n_input * sizeof(rknn_tensor_attr));
+    
+    for (int i = 0; i < app_ctx->io_num.n_input; i++) {
+        app_ctx->input_attrs[i].index = i;
+        ret = rknn_query(app_ctx->rknn_ctx, RKNN_QUERY_INPUT_ATTR, &(app_ctx->input_attrs[i]), sizeof(rknn_tensor_attr));
+        if (ret != RKNN_SUCC) {
+            printf("❌ 查询输入属性失败! ret=%d\n", ret);
+            return -1;
+        }
+    }
+    
+    // 获取输出属性
+    app_ctx->output_attrs = (rknn_tensor_attr*)malloc(app_ctx->io_num.n_output * sizeof(rknn_tensor_attr));
+    memset(app_ctx->output_attrs, 0, app_ctx->io_num.n_output * sizeof(rknn_tensor_attr));
+    
+    for (int i = 0; i < app_ctx->io_num.n_output; i++) {
+        app_ctx->output_attrs[i].index = i;
+        ret = rknn_query(app_ctx->rknn_ctx, RKNN_QUERY_OUTPUT_ATTR, &(app_ctx->output_attrs[i]), sizeof(rknn_tensor_attr));
+        if (ret != RKNN_SUCC) {
+            printf("❌ 查询输出属性失败! ret=%d\n", ret);
+            return -1;
+        }
+    }
+    
+    // 根据数据格式正确解析维度
+    if (app_ctx->input_attrs[0].fmt == RKNN_TENSOR_NCHW) {
+        app_ctx->model_channel = app_ctx->input_attrs[0].dims[1];
+        app_ctx->model_height = app_ctx->input_attrs[0].dims[2];
+        app_ctx->model_width = app_ctx->input_attrs[0].dims[3];
+    } else if (app_ctx->input_attrs[0].fmt == RKNN_TENSOR_NHWC) {
+        app_ctx->model_height = app_ctx->input_attrs[0].dims[1];
+        app_ctx->model_width = app_ctx->input_attrs[0].dims[2];
+        app_ctx->model_channel = app_ctx->input_attrs[0].dims[3];
+    } else {
+        app_ctx->model_channel = app_ctx->input_attrs[0].dims[1];
+        app_ctx->model_height = app_ctx->input_attrs[0].dims[2];
+        app_ctx->model_width = app_ctx->input_attrs[0].dims[3];
+    }
+    
+    printf("✓ 篮筐篮球模型信息: C=%d, H=%d, W=%d\n", 
+           app_ctx->model_channel, app_ctx->model_height, app_ctx->model_width);
+    
+    return 0;
+}
+
+// 释放篮筐篮球检测模型
+static int release_rim_basketball_model(rknn_app_context_t* app_ctx) {
+    if (app_ctx->input_attrs) {
+        free(app_ctx->input_attrs);
+        app_ctx->input_attrs = NULL;
+    }
+    
+    if (app_ctx->output_attrs) {
+        free(app_ctx->output_attrs);
+        app_ctx->output_attrs = NULL;
+    }
+    
+    if (app_ctx->rknn_ctx) {
+        rknn_destroy(app_ctx->rknn_ctx);
+        app_ctx->rknn_ctx = 0;
+    }
+    
+    return 0;
+}
+
 // 加载相机标定参数
 static int load_camera_calibration(const char* calib_file, camera_mapping_t* mapping) {
     if (!calib_file) {
@@ -243,10 +360,27 @@ static int init_rim_zero_copy_mem(rknn_app_context_t* app_ctx, rim_zero_copy_con
     return 0;
 }
 
-// 姿态检测letterbox预处理
+// 转换图像坐标到真实世界坐标 - 添加坐标映射函数
+static cv::Point2f image_to_world_coordinate(cv::Point2f image_point, const camera_mapping_t* mapping) {
+    if (!mapping->is_initialized) {
+        return image_point;
+    }
+    
+    std::vector<cv::Point2f> image_points = {image_point};
+    std::vector<cv::Point2f> world_points;
+    
+    cv::perspectiveTransform(image_points, world_points, mapping->homography);
+    return world_points[0];
+}
+
+// 姿态检测letterbox预处理 - 修复：与独立版本保持一致
 static int optimized_letterbox_to_npu(const cv::Mat& src, pose_zero_copy_context_t* zc_ctx) {
     cv::Mat npu_mat(zc_ctx->model_height, zc_ctx->model_width, CV_8UC3, zc_ctx->input_mem->virt_addr);
+    
+    // 初始化letterbox上下文
     init_letterbox_context(&zc_ctx->letterbox_ctx, src.cols, src.rows, zc_ctx->model_width, zc_ctx->model_height, false);
+    
+    // 使用letterbox预处理
     return letterbox_preprocess(src, npu_mat, &zc_ctx->letterbox_ctx);
 }
 
@@ -293,16 +427,25 @@ static void draw_pose_results(cv::Mat& img, object_detect_result_list* results,
         snprintf(conf_str, sizeof(conf_str), "%.2f", result->prop);
         cv::putText(img, conf_str, cv::Point((int)x1, (int)y1-5), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 1);
         
-        // 绘制关键点和骨架
+        // 绘制关键点 - 修复：使用正确的结构体字段
         for (int j = 0; j < 17; j++) {
             if (result->keypoints[j][2] > 0.5) {
                 float kp_x = (result->keypoints[j][0] - letterbox_ctx->offset_x) / letterbox_ctx->scale;
                 float kp_y = (result->keypoints[j][1] - letterbox_ctx->offset_y) / letterbox_ctx->scale;
                 cv::circle(img, cv::Point((int)kp_x, (int)kp_y), 3, cv::Scalar(0, 255, 0), -1);
+                
+                // 如果有坐标映射，显示真实世界坐标 (左脚踝作为参考点)
+                if (mapping->is_initialized && j == 15) {
+                    cv::Point2f world_point = image_to_world_coordinate(cv::Point2f(kp_x, kp_y), mapping);
+                    char coord_str[50];
+                    snprintf(coord_str, sizeof(coord_str), "(%.1f,%.1f)", world_point.x, world_point.y);
+                    cv::putText(img, coord_str, cv::Point((int)kp_x, (int)kp_y-10), 
+                              cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 255, 0), 1);
+                }
             }
         }
         
-        // 绘制骨架
+        // 绘制骨架 - 修复：使用正确的结构体字段
         for (int k = 0; k < 19; k++) {
             int kpt_a = skeleton[k * 2] - 1;
             int kpt_b = skeleton[k * 2 + 1] - 1;
@@ -349,7 +492,7 @@ static void draw_rim_basketball_results(cv::Mat& img, const RimBasketballDetecti
 }
 
 // 姿态检测线程
-void pose_detection_thread(const char* model_path, const char* calib_path, int camera_id) {
+void pose_detection_thread(const char* model_path, const char* calib_path, const char* camera_path, int camera_id) {
     printf("🔥 启动姿态检测线程 (摄像头%d)\n", camera_id);
     
     rknn_app_context_t rknn_app_ctx;
@@ -377,11 +520,21 @@ void pose_detection_thread(const char* model_path, const char* calib_path, int c
     }
     
     // 打开摄像头
-    cv::VideoCapture cap(camera_id);
-    if (!cap.isOpened()) {
-        printf("❌ 无法打开姿态检测摄像头%d！\n", camera_id);
-        return;
-    }
+    cv::VideoCapture cap;
+    if (camera_path) {
+        cap.open(camera_path);
+        if (!cap.isOpened()) {
+            printf("❌ 无法打开姿态检测摄像头: %s！\n", camera_path);
+            return;
+        }
+        printf("✅ 姿态检测摄像头打开成功: %s\n", camera_path);
+    } else {
+        cap.open(camera_id);
+        if (!cap.isOpened()) {
+            printf("❌ 无法打开姿态检测摄像头%d！\n", camera_id);
+            return;
+        }
+        }
     
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 1920);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 1080);
@@ -402,26 +555,21 @@ void pose_detection_thread(const char* model_path, const char* calib_path, int c
         
         frame_count++;
         
-        // 预处理
-        ret = optimized_letterbox_to_npu(frame, &zero_copy_ctx);
-        if (ret != 0) continue;
-        
-        // 推理
-        ret = rknn_run(rknn_app_ctx.rknn_ctx, nullptr);
-        if (ret < 0) continue;
-        
-        // 后处理 - 创建兼容的letterbox_t结构
-        letterbox_t legacy_letterbox;
-        legacy_letterbox.x_pad = zero_copy_ctx.letterbox_ctx.offset_x;
-        legacy_letterbox.y_pad = zero_copy_ctx.letterbox_ctx.offset_y;
-        legacy_letterbox.scale = zero_copy_ctx.letterbox_ctx.scale;
+        // 使用专用的姿态检测推理函数
+        image_buffer_t img_buffer;
+        img_buffer.width = frame.cols;
+        img_buffer.height = frame.rows;
+        img_buffer.format = IMAGE_FORMAT_RGB888;
+        img_buffer.virt_addr = frame.data;
+        img_buffer.size = frame.cols * frame.rows * 3;
         
         object_detect_result_list pose_results;
-        ret = post_process(&rknn_app_ctx, zero_copy_ctx.output_mems, &legacy_letterbox, 0.25, 0.45, &pose_results);
+        ret = inference_yolov8_pose_model(&rknn_app_ctx, &img_buffer, &pose_results);
         if (ret != 0) continue;
         
-        // 绘制结果
-        draw_pose_results(frame, &pose_results, &g_camera_mapping, &zero_copy_ctx.letterbox_ctx);
+        // 绘制结果 - 使用默认letterbox上下文
+        letterbox_context_t default_letterbox_ctx = {0};
+        draw_pose_results(frame, &pose_results, &g_camera_mapping, &default_letterbox_ctx);
         
         // ByteTrack跟踪 (简化版)
         if (g_enable_tracking) {
@@ -457,16 +605,15 @@ void pose_detection_thread(const char* model_path, const char* calib_path, int c
 }
 
 // 篮筐篮球检测线程  
-void rim_basketball_detection_thread(const char* model_path, int camera_id) {
+void rim_basketball_detection_thread(const char* model_path, const char* camera_path, int camera_id) {
     printf("🏀 启动篮筐篮球检测线程 (摄像头%d)\n", camera_id);
     
     rknn_app_context_t rknn_app_ctx;
     rim_zero_copy_context_t zero_copy_ctx = {};
     memset(&rknn_app_ctx, 0, sizeof(rknn_app_context_t));
     
-    // 初始化模型 (这里需要实现rim_basketball模型的初始化函数)
-    // 暂时使用姿态检测的初始化函数作为占位符
-    int ret = init_yolov8_pose_model(model_path, &rknn_app_ctx);
+    // 初始化篮筐篮球检测模型 - 修复：使用正确的初始化函数
+    int ret = init_rim_basketball_model(model_path, &rknn_app_ctx);
     if (ret != 0) {
         printf("❌ 篮筐篮球检测模型初始化失败！\n");
         return;
@@ -481,11 +628,21 @@ void rim_basketball_detection_thread(const char* model_path, int camera_id) {
     }
     
     // 打开摄像头
-    cv::VideoCapture cap(camera_id);
-    if (!cap.isOpened()) {
-        printf("❌ 无法打开篮筐篮球检测摄像头%d！\n", camera_id);
-        return;
-    }
+    cv::VideoCapture cap;
+    if (camera_path) {
+        cap.open(camera_path);
+        if (!cap.isOpened()) {
+            printf("❌ 无法打开篮筐篮球检测摄像头: %s！\n", camera_path);
+            return;
+        }
+        printf("✅ 篮筐篮球检测摄像头打开成功: %s\n", camera_path);
+    } else {
+        cap.open(camera_id);
+        if (!cap.isOpened()) {
+            printf("❌ 无法打开篮筐篮球检测摄像头%d！\n", camera_id);
+            return;
+        }
+        }
     
     cap.set(cv::CAP_PROP_FRAME_WIDTH, 1920);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, 1080);
@@ -596,23 +753,49 @@ void rim_basketball_detection_thread(const char* model_path, int camera_id) {
     }
     
     // 清理资源
-    release_yolov8_pose_model(&rknn_app_ctx);
+    release_rim_basketball_model(&rknn_app_ctx);
     printf("篮筐篮球检测线程退出\n");
 }
 
 int main(int argc, char **argv) {
     if (argc < 3) {
-        printf("用法: %s <姿态模型路径> <篮筐篮球模型路径> [标定文件] [姿态摄像头ID] [篮筐摄像头ID]\n", argv[0]);
+        printf("用法: %s <姿态模型路径> <篮筐篮球模型路径> [标定文件] [姿态摄像头路径] [篮筐摄像头路径]\n", argv[0]);
         printf("示例: %s ../models/Q_yolov8_pose.rknn ../models/Q_Rim_Basketball_724_JZ.rknn\n", argv[0]);
-        printf("示例: %s ../models/Q_yolov8_pose.rknn ../models/Q_Rim_Basketball_724_JZ.rknn ../data/2025_7_11pm.json 0 2\n", argv[0]);
+        printf("示例: %s ../models/Q_yolov8_pose.rknn ../models/Q_Rim_Basketball_724_JZ.rknn ../data/2025_7_11pm.json /dev/v4l/by-id/usb-Generic_USB_Camera_200901010001-video-index0 /dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0\n", argv[0]);
         return -1;
     }
     
     const char* pose_model_path = argv[1];
     const char* rim_model_path = argv[2];
-    const char* calib_path = (argc > 3) ? argv[3] : nullptr;
-    int pose_camera_id = (argc > 4) ? atoi(argv[4]) : 0;
-    int rim_camera_id = (argc > 5) ? atoi(argv[5]) : 2;
+    const char* calib_path = (argc > 3 && strlen(argv[3]) > 0) ? argv[3] : nullptr;
+    const char* pose_camera_path = (argc > 4 && strlen(argv[4]) > 0) ? argv[4] : "/dev/v4l/by-id/usb-Generic_USB_Camera_200901010001-video-index0";
+    const char* rim_camera_path = (argc > 5 && strlen(argv[5]) > 0) ? argv[5] : "/dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0";
+    
+    // 检查设备路径是否存在，不存在则使用nullptr(默认设备)
+    if (pose_camera_path && access(pose_camera_path, F_OK) != 0) {
+        printf("⚠️  姿态检测摄像头 %s 不存在，使用默认配置\n", pose_camera_path);
+        pose_camera_path = nullptr;
+    }
+    if (rim_camera_path && access(rim_camera_path, F_OK) != 0) {
+        printf("⚠️  篮筐检测摄像头 %s 不存在，使用默认配置\n", rim_camera_path);
+        rim_camera_path = nullptr;
+    }
+    
+    // 检查路径是否为数字（兼容旧的数字ID格式）
+    bool pose_is_numeric = (argc > 4) && (strspn(argv[4], "0123456789") == strlen(argv[4]));
+    bool rim_is_numeric = (argc > 5) && (strspn(argv[5], "0123456789") == strlen(argv[5]));
+    
+    int pose_camera_id = 2;  // 默认值
+    int rim_camera_id = 0;   // 默认值
+    
+    if (pose_is_numeric) {
+        pose_camera_id = atoi(argv[4]);
+        pose_camera_path = nullptr;  // 使用数字ID
+    }
+    if (rim_is_numeric) {
+        rim_camera_id = atoi(argv[5]);
+        rim_camera_path = nullptr;   // 使用数字ID
+    }
     
     // 设置信号处理
     signal(SIGINT, sig_handler);
@@ -620,8 +803,17 @@ int main(int argc, char **argv) {
     printf("========================================\n");
     printf("      双摄像头双线程检测系统 v1.0\n");
     printf("========================================\n");
-    printf("姿态模型: %s (摄像头%d)\n", pose_model_path, pose_camera_id);
-    printf("篮筐模型: %s (摄像头%d)\n", rim_model_path, rim_camera_id);
+    if (pose_camera_path) {
+        printf("姿态模型: %s (摄像头: %s)\n", pose_model_path, pose_camera_path);
+    } else {
+        printf("姿态模型: %s (摄像头%d)\n", pose_model_path, pose_camera_id);
+    }
+    
+    if (rim_camera_path) {
+        printf("篮筐模型: %s (摄像头: %s)\n", rim_model_path, rim_camera_path);
+    } else {
+        printf("篮筐模型: %s (摄像头%d)\n", rim_model_path, rim_camera_id);
+    }
     if (calib_path) printf("标定文件: %s\n", calib_path);
     printf("按键控制:\n");
     printf("  [ESC] - 退出程序\n");
@@ -630,8 +822,8 @@ int main(int argc, char **argv) {
     printf("========================================\n");
     
     // 启动两个检测线程
-    std::thread pose_thread(pose_detection_thread, pose_model_path, calib_path, pose_camera_id);
-    std::thread rim_thread(rim_basketball_detection_thread, rim_model_path, rim_camera_id);
+    std::thread pose_thread(pose_detection_thread, pose_model_path, calib_path, pose_camera_path, pose_camera_id);
+    std::thread rim_thread(rim_basketball_detection_thread, rim_model_path, rim_camera_path, rim_camera_id);
     
     // 主线程负责显示
     printf("等待检测线程启动...\n");

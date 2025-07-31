@@ -1,0 +1,90 @@
+# Build directories and files
+build/
+*.o
+*.d
+*.so
+*.a
+*.dylib
+*.dll
+
+# Executables  
+yolov8_pose_basketball
+dual_camera_detector
+rim_basketball_detector*
+yolov8_pose_only
+test_basketball_rknn
+rga_resize_test
+
+# CMake build files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# Compiler outputs
+*.out
+*.exe
+
+# Image/Video test files (temporary outputs)
+*.jpg
+*.jpeg
+*.png
+*.mp4
+*.avi
+*.mkv
+screenshot_*.jpg
+output*.jpg
+letterbox_result.jpg
+download.jpeg
+
+# Logs and temporary files
+*.log
+output.log
+*.tmp
+*.temp
+
+# Large model files that should be managed separately
+# Uncomment if models are too large for git
+# *.rknn
+# *.pt
+# *.onnx
+# *.weights
+
+# System files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.code-workspace
+
+# Backup files
+*.backup
+*.bak
+*.orig
+
+# Runtime generated files
+core
+core.*
+
+# NPU/RGA performance test outputs
+*.perf
+
+# Video capture device symlinks (if any)
+/dev/video*
+
+# Large directories and files (保守方案 - 排除大文件)
+3rdparty/
+ref/
+*.avi
+*.mp4
+*.mkv
+
+# Keep only essential models (comment out if you want all models)
+# models/

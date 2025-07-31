@@ -1,0 +1,11 @@
+# 添加到主CMakeLists.txt的临时测试目标
+
+# RGA性能测试程序
+add_executable(rga_resize_test src/rga_resize_test.cpp)
+
+# 链接库
+target_link_libraries(rga_resize_test
+    rga
+    ${OpenCV_LIBS}
+    pthread
+)

@@ -6,6 +6,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 使用CMake构建系统，支持RK3588平台的双摄像头独立检测架构：
 
+## 快速启动脚本 (推荐)
+
+```bash
+# 主启动菜单 - 一键选择运行模式
+./start.sh
+
+# 直接启动脚本
+./run_dual_camera.sh      # 双摄像头双线程检测 (推荐)
+./run_pose_only.sh        # 纯姿态检测
+./run_rim_basketball.sh   # 篮筐篮球检测
+```
+
+## 手动编译和运行
+
 ```bash
 # 编译项目
 mkdir -p build && cd build
@@ -117,9 +131,9 @@ make -j$(nproc)
 - `src/dual_camera_detector.cc`: 双摄像头双线程集成检测系统 (推荐)
 - `src/main_pose_only.cc`: 纯姿态检测程序，单线程零拷贝优化
 - `src/rim_basketball_detector_updated.cc`: 篮筐篮球检测程序，独立运行
-- `src/rim_basketball_postprocess.cpp`: 篮筐篮球后处理模块 (复杂版，DFL解码)
-- `src/rim_basketball_postprocess_simple.cpp`: 篮筐篮球后处理模块 (简化版，直接回归)
+- `src/rim_basketball_postprocess_simple.cpp`: 篮筐篮球后处理模块 (基于ref/rknn_yolov8_ref)
 - `include/rim_basketball_postprocess.h`: 篮筐篮球检测接口定义
+- `src/letterbox_utils.cc`: 零拷贝letterbox预处理工具
 
 ### 模型文件
 - `models/Q_yolov8_pose.rknn`: 姿态检测模型
@@ -151,10 +165,27 @@ make -j$(nproc)
 
 ## 调试和测试
 
+### 编译时调试
+```bash
+# 清理重新编译
+cd build && make clean && cd .. && rm -rf build && mkdir build && cd build && cmake .. && make -j$(nproc)
+
+# 检查NPU模型兼容性
+file ../models/*.rknn
+```
+
+### 运行时调试
 - 信号处理：SIGINT优雅退出
-- 性能统计：FPS计算和延迟分析
+- 性能统计：FPS计算和延迟分析  
 - 可视化调试：关键点、跟踪框、坐标映射可视化
 - 多线程安全：互斥锁保护共享资源
+
+### 权限设置
+```bash
+# NPU设备权限
+sudo chmod 666 /dev/dri/renderD*
+sudo usermod -a -G video $USER
+```
 
 ## 按键控制
 
@@ -191,11 +222,26 @@ make -j$(nproc)
 - 坐标映射转换结果
 - 检测框置信度分布
 
+### USB摄像头设备管理
+
+项目使用持久化USB设备路径，解决设备重启后设备号变化的问题：
+
+#### 设备配置
+- 姿态检测摄像头: `/dev/v4l/by-id/usb-Generic_USB_Camera_200901010001-video-index0`
+- 篮筐检测摄像头: `/dev/v4l/by-id/usb-DECXIN_CAMERA_DECXIN_CAMERA_01.00.00-video-index0`
+
+#### 自动回退机制
+启动脚本会自动：
+1. 检查USB摄像头的by-id路径是否存在
+2. 如果设备不存在，自动使用C++程序的默认配置
+3. 显示设备状态信息
+
 ### 常见问题排查
 - **NPU权限**: 需要root权限或加入video用户组
 - **模型版本**: 确保使用RK3588对应的.rknn模型
 - **内存不足**: 检查NPU内存分配，调整队列大小
 - **摄像头兼容性**: 验证V4L2设备支持MJPEG格式
+- **设备路径**: 使用 `ls /dev/v4l/by-id/` 检查USB摄像头设备路径
 
 ## 待实现功能
 

@@ -498,14 +498,10 @@ static cv::Point2f map_to_ground(const cv::Point2f& image_point, cv::Mat& debug_
                 cv::Point(image_point.x, image_point.y + 50), 
                 cv::Scalar(0, 255, 255), 2);
                 
-        // 设计原因: 显示映射误差
-        std::vector<cv::Point2f> back_points;
-        cv::perspectiveTransform(dst_points, back_points, g_camera_mapping.homography.inv());
-        float error = cv::norm(back_points[0] - image_point);
-        
-        char error_text[64];
-        sprintf(error_text, "Position: %.1fpx", error);
-        cv::putText(debug_frame, error_text,
+        // 设计原因: 显示地面坐标（毫米）
+        char coord_text[128];
+        sprintf(coord_text, "Ground: (%.0f,%.0f)mm", ground_point.x, ground_point.y);
+        cv::putText(debug_frame, coord_text,
                    cv::Point(image_point.x + 10, image_point.y + 70),
                    cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 255), 2);
     }
@@ -942,36 +938,36 @@ int main(int argc, char **argv)
                 // 显示两种方法的比较结果
                 int text_start_y = rect.y + rect.height + 20;
                 
-                // ROI方法结果（紫色）
+                // ROI下沿中点地面坐标（紫色）
                 if (ground_point_roi.x >= 0 && ground_point_roi.y >= 0) {
                     char roi_text[256];
-                    sprintf(roi_text, "ROI: (%.0f,%.0f)mm", ground_point_roi.x, ground_point_roi.y);
+                    sprintf(roi_text, "ROI底部: (%.0f,%.0f)mm", ground_point_roi.x, ground_point_roi.y);
                     cv::putText(result_frame, roi_text, cv::Point(rect.x, text_start_y), 
                                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 255), 2);
                 }
                 
-                // 脚踝+偏移方法结果（绿色）
+                // 脚踝+垂直拉伸量地面坐标（绿色）
                 if (ground_point_ankle.x >= 0 && ground_point_ankle.y >= 0) {
                     char ankle_text[256];
-                    sprintf(ankle_text, "ANKLE: (%.0f,%.0f)mm", ground_point_ankle.x, ground_point_ankle.y);
+                    sprintf(ankle_text, "脚踝+偏移: (%.0f,%.0f)mm", ground_point_ankle.x, ground_point_ankle.y);
                     cv::putText(result_frame, ankle_text, cv::Point(rect.x, text_start_y + 25), 
                                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 0), 2);
                 }
                 
-                // 显示两种方法的差异
-                float distance_diff = cv::norm(ground_point_roi - ground_point_ankle);
-                char diff_text[128];
-                sprintf(diff_text, "DIFF: %.1fmm", distance_diff);
-                cv::putText(result_frame, diff_text, cv::Point(rect.x, text_start_y + 50), 
-                           cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 255, 255), 2);
-                
-                // 显示偏移量信息
+                // 显示动态垂直拉伸量
                 if (foot_result.use_keypoints) {
                     char offset_text[128];
-                    sprintf(offset_text, "OFFSET: %.1fpx", foot_result.vertical_offset);
-                    cv::putText(result_frame, offset_text, cv::Point(rect.x, text_start_y + 75), 
+                    sprintf(offset_text, "垂直拉伸: %.1fpx", foot_result.vertical_offset);
+                    cv::putText(result_frame, offset_text, cv::Point(rect.x, text_start_y + 50), 
                                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 255), 2);
                 }
+                
+                // 显示两种方法的地面距离差异
+                float distance_diff = cv::norm(ground_point_roi - ground_point_ankle);
+                char diff_text[128];
+                sprintf(diff_text, "地面差距: %.1fmm", distance_diff);
+                cv::putText(result_frame, diff_text, cv::Point(rect.x, text_start_y + 75), 
+                           cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 255, 255), 2);
             }
         }
         } else {
@@ -1018,20 +1014,31 @@ int main(int argc, char **argv)
                 cv::Point2f ground_point_roi = map_to_ground(foot_result.roi_method, result_frame);
                 cv::Point2f ground_point_ankle = map_to_ground(foot_result.ankle_method, result_frame);
                 
-                // 显示地面坐标
+                // 显示地面坐标和拉伸量信息
                 int text_start_y = bbox.y + bbox.height + 20;
+                
+                // ROI下沿中点地面坐标（紫色）
                 if (ground_point_roi.x >= 0 && ground_point_roi.y >= 0) {
                     char roi_text[256];
-                    sprintf(roi_text, "ROI: (%.0f,%.0f)mm", ground_point_roi.x, ground_point_roi.y);
+                    sprintf(roi_text, "ROI底部: (%.0f,%.0f)mm", ground_point_roi.x, ground_point_roi.y);
                     cv::putText(result_frame, roi_text, cv::Point(bbox.x, text_start_y), 
                                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 255), 2);
                 }
                 
+                // 脚踝+垂直拉伸量地面坐标（绿色）
                 if (ground_point_ankle.x >= 0 && ground_point_ankle.y >= 0) {
                     char ankle_text[256];
-                    sprintf(ankle_text, "ANKLE: (%.0f,%.0f)mm", ground_point_ankle.x, ground_point_ankle.y);
+                    sprintf(ankle_text, "脚踝+偏移: (%.0f,%.0f)mm", ground_point_ankle.x, ground_point_ankle.y);
                     cv::putText(result_frame, ankle_text, cv::Point(bbox.x, text_start_y + 25), 
                                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 0), 2);
+                }
+                
+                // 显示动态垂直拉伸量
+                if (foot_result.use_keypoints) {
+                    char offset_text[128];
+                    sprintf(offset_text, "垂直拉伸: %.1fpx", foot_result.vertical_offset);
+                    cv::putText(result_frame, offset_text, cv::Point(bbox.x, text_start_y + 50), 
+                               cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 255), 2);
                 }
             }
         }
