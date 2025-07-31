@@ -485,8 +485,9 @@ int main(int argc, char **argv) {
     const char* model_path = argv[1];
     const char* input_source = (argc > 2) ? argv[2] : "2";  // 默认摄像头2
     
-    // 判断输入源类型：数字为摄像头ID，文件路径为视频文件
+    // 判断输入源类型：数字为摄像头ID，/dev/video*或/dev/v4l*为摄像头设备，其他为视频文件
     bool is_video_file = false;
+    bool is_camera_device = false;
     int camera_id = 2;
     
     if (argc > 2) {
@@ -497,9 +498,15 @@ int main(int argc, char **argv) {
             // 纯数字，表示摄像头ID
             camera_id = (int)id;
             is_video_file = false;
+            is_camera_device = false;
+        } else if (strstr(input_source, "/dev/video") || strstr(input_source, "/dev/v4l")) {
+            // 摄像头设备路径
+            is_video_file = false;
+            is_camera_device = true;
         } else {
-            // 包含非数字字符，表示视频文件路径
+            // 包含非数字字符且不是设备路径，表示视频文件路径
             is_video_file = true;
+            is_camera_device = false;
         }
     }
     
@@ -512,6 +519,8 @@ int main(int argc, char **argv) {
     printf("模型文件: %s\n", model_path);
     if (is_video_file) {
         printf("视频文件: %s\n", input_source);
+    } else if (is_camera_device) {
+        printf("摄像头设备: %s\n", input_source);
     } else {
         printf("摄像头设备: /dev/video%d\n", camera_id);
     }
@@ -558,8 +567,27 @@ int main(int argc, char **argv) {
                cap.get(cv::CAP_PROP_FRAME_HEIGHT),
                cap.get(cv::CAP_PROP_FPS));
         printf("总帧数: %.0f\n", cap.get(cv::CAP_PROP_FRAME_COUNT));
+    } else if (is_camera_device) {
+        // 打开摄像头设备路径 - 强制使用V4L2后端
+        cap.open(input_source, cv::CAP_V4L2);
+        if (!cap.isOpened()) {
+            printf("❌ 无法打开摄像头设备: %s！\n", input_source);
+            goto exit;
+        }
+        
+        // 设置摄像头参数
+        cap.set(cv::CAP_PROP_FRAME_WIDTH, 1920);
+        cap.set(cv::CAP_PROP_FRAME_HEIGHT, 1080);
+        cap.set(cv::CAP_PROP_FPS, 30);
+        cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
+        
+        printf("✓ 摄像头设备打开成功\n");
+        printf("摄像头分辨率: %.0fx%.0f @ %.0f FPS\n", 
+               cap.get(cv::CAP_PROP_FRAME_WIDTH), 
+               cap.get(cv::CAP_PROP_FRAME_HEIGHT),
+               cap.get(cv::CAP_PROP_FPS));
     } else {
-        // 打开摄像头 - 强制使用V4L2后端
+        // 打开摄像头ID - 强制使用V4L2后端
         cap.open(camera_id, cv::CAP_V4L2);
         if (!cap.isOpened()) {
             printf("❌ 无法打开摄像头 /dev/video%d！\n", camera_id);

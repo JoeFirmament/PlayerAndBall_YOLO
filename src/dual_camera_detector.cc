@@ -39,12 +39,12 @@
 #include "RgaUtils.h"
 
 // 姿态检测相关
-#include "yolov8-pose.h"
+#include "pose_yolov8.h"
 #include "image_utils.h"
 #include "file_utils.h"
 #include "image_drawing.h"
 #include "BYTETracker.h"
-#include "letterbox_utils.h"
+#include "pose_letterbox_utils.h"
 
 // 篮筐篮球检测相关
 #include "rim_basketball_postprocess.h"
@@ -133,7 +133,7 @@ static int64_t getCurrentTimeUs() {
 }
 
 // 篮筐篮球检测模型初始化函数
-static int init_rim_basketball_model(const char* model_path, rknn_app_context_t* app_ctx) {
+static int init_rim_basketball_model_with_npu(const char* model_path, rknn_app_context_t* app_ctx, int npu_core_id) {
     int ret;
     
     printf("加载篮筐篮球检测模型: %s\n", model_path);
@@ -171,6 +171,22 @@ static int init_rim_basketball_model(const char* model_path, rknn_app_context_t*
     if (ret < 0) {
         printf("❌ RKNN初始化失败! ret=%d\n", ret);
         return -1;
+    }
+    
+    // 设置NPU核心
+    rknn_core_mask core_mask;
+    switch(npu_core_id) {
+        case 0: core_mask = RKNN_NPU_CORE_0; break;
+        case 1: core_mask = RKNN_NPU_CORE_1; break; 
+        case 2: core_mask = RKNN_NPU_CORE_2; break;
+        default: core_mask = RKNN_NPU_CORE_AUTO; break;
+    }
+    
+    ret = rknn_set_core_mask(app_ctx->rknn_ctx, core_mask);
+    if (ret < 0) {
+        printf("⚠️ 设置NPU核心%d失败, 使用默认设置\n", npu_core_id);
+    } else {
+        printf("✅ 篮筐篮球检测模型使用NPU核心%d\n", npu_core_id);
     }
     
     // 获取模型输入输出信息
@@ -427,6 +443,22 @@ static void draw_pose_results(cv::Mat& img, object_detect_result_list* results,
         snprintf(conf_str, sizeof(conf_str), "%.2f", result->prop);
         cv::putText(img, conf_str, cv::Point((int)x1, (int)y1-5), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 1);
         
+        // === 添加ROI地面定位点（紫色圆点） ===
+        // 计算检测框下边缘中点（已经转换到原图坐标系）
+        cv::Point2f roi_bottom_center((x1 + x2) * 0.5f, y2);
+        
+        // 绘制ROI地面定位点（紫色圆点）
+        cv::circle(img, roi_bottom_center, 4, cv::Scalar(255, 0, 255), -1);
+        
+        // 如果有坐标映射，显示ROI的真实世界坐标
+        if (mapping->is_initialized) {
+            cv::Point2f roi_world_point = image_to_world_coordinate(roi_bottom_center, mapping);
+            char roi_coord_str[60];
+            snprintf(roi_coord_str, sizeof(roi_coord_str), "ROI:(%.0f,%.0f)mm", roi_world_point.x, roi_world_point.y);
+            cv::putText(img, roi_coord_str, cv::Point((int)roi_bottom_center.x - 40, (int)roi_bottom_center.y + 20), 
+                      cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 0, 255), 1);
+        }
+        
         // 绘制关键点 - 修复：使用正确的结构体字段
         for (int j = 0; j < 17; j++) {
             if (result->keypoints[j][2] > 0.5) {
@@ -499,8 +531,8 @@ void pose_detection_thread(const char* model_path, const char* calib_path, const
     pose_zero_copy_context_t zero_copy_ctx = {};
     memset(&rknn_app_ctx, 0, sizeof(rknn_app_context_t));
     
-    // 初始化模型
-    int ret = init_yolov8_pose_model(model_path, &rknn_app_ctx);
+    // 初始化模型 - 使用NPU核心1
+    int ret = init_yolov8_pose_model_with_npu(model_path, &rknn_app_ctx, 1);
     if (ret != 0) {
         printf("❌ 姿态检测模型初始化失败！\n");
         return;
@@ -510,6 +542,14 @@ void pose_detection_thread(const char* model_path, const char* calib_path, const
     ret = init_pose_zero_copy_mem(&rknn_app_ctx, &zero_copy_ctx);
     if (ret != 0) {
         printf("❌ 姿态检测零拷贝内存初始化失败！\n");
+        release_yolov8_pose_model(&rknn_app_ctx);
+        return;
+    }
+    
+    // 初始化后处理模块
+    ret = pose_init_post_process();
+    if (ret != 0) {
+        printf("❌ 姿态检测后处理模块初始化失败！\n");
         release_yolov8_pose_model(&rknn_app_ctx);
         return;
     }
@@ -555,21 +595,38 @@ void pose_detection_thread(const char* model_path, const char* calib_path, const
         
         frame_count++;
         
-        // 使用专用的姿态检测推理函数
-        image_buffer_t img_buffer;
-        img_buffer.width = frame.cols;
-        img_buffer.height = frame.rows;
-        img_buffer.format = IMAGE_FORMAT_RGB888;
-        img_buffer.virt_addr = frame.data;
-        img_buffer.size = frame.cols * frame.rows * 3;
-        
-        object_detect_result_list pose_results;
-        ret = inference_yolov8_pose_model(&rknn_app_ctx, &img_buffer, &pose_results);
+        // 使用零拷贝推理
+        ret = optimized_letterbox_to_npu(frame, &zero_copy_ctx);
         if (ret != 0) continue;
         
-        // 绘制结果 - 使用默认letterbox上下文
-        letterbox_context_t default_letterbox_ctx = {0};
-        draw_pose_results(frame, &pose_results, &g_camera_mapping, &default_letterbox_ctx);
+        ret = rknn_run(rknn_app_ctx.rknn_ctx, nullptr);
+        if (ret < 0) continue;
+        
+        // 获取输出
+        rknn_output outputs[rknn_app_ctx.io_num.n_output];
+        memset(outputs, 0, sizeof(outputs));
+        for (int i = 0; i < rknn_app_ctx.io_num.n_output; i++) {
+            outputs[i].index = i;
+            outputs[i].want_float = (!rknn_app_ctx.is_quant);
+        }
+        ret = rknn_outputs_get(rknn_app_ctx.rknn_ctx, rknn_app_ctx.io_num.n_output, outputs, NULL);
+        if (ret < 0) continue;
+        
+        // 后处理
+        object_detect_result_list pose_results;
+        letterbox_t letterbox;
+        letterbox.x_pad = zero_copy_ctx.letterbox_ctx.offset_x;
+        letterbox.y_pad = zero_copy_ctx.letterbox_ctx.offset_y;
+        letterbox.scale = zero_copy_ctx.letterbox_ctx.scale;
+        
+        ret = pose_post_process(&rknn_app_ctx, outputs, &letterbox, 0.5, 0.4, &pose_results);
+        
+        // 释放输出
+        rknn_outputs_release(rknn_app_ctx.rknn_ctx, rknn_app_ctx.io_num.n_output, outputs);
+        if (ret != 0) continue;
+        
+        // 绘制结果 - 使用正确的letterbox上下文
+        draw_pose_results(frame, &pose_results, &g_camera_mapping, &zero_copy_ctx.letterbox_ctx);
         
         // ByteTrack跟踪 (简化版)
         if (g_enable_tracking) {
@@ -613,7 +670,7 @@ void rim_basketball_detection_thread(const char* model_path, const char* camera_
     memset(&rknn_app_ctx, 0, sizeof(rknn_app_context_t));
     
     // 初始化篮筐篮球检测模型 - 修复：使用正确的初始化函数
-    int ret = init_rim_basketball_model(model_path, &rknn_app_ctx);
+    int ret = init_rim_basketball_model_with_npu(model_path, &rknn_app_ctx, 0);
     if (ret != 0) {
         printf("❌ 篮筐篮球检测模型初始化失败！\n");
         return;
@@ -623,7 +680,7 @@ void rim_basketball_detection_thread(const char* model_path, const char* camera_
     ret = init_rim_zero_copy_mem(&rknn_app_ctx, &zero_copy_ctx);
     if (ret != 0) {
         printf("❌ 篮筐篮球检测零拷贝内存初始化失败！\n");
-        release_yolov8_pose_model(&rknn_app_ctx);
+        release_rim_basketball_model(&rknn_app_ctx);
         return;
     }
     

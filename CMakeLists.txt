@@ -34,9 +34,9 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 # 原有的双线程版本源文件
 set(DUAL_THREAD_SRC
     src/main_camera_optimized.cc
-    src/postprocess.cc
-    src/yolov8-pose.cc
-    src/letterbox_utils.cc
+    src/pose_postprocess.cc
+    src/pose_yolov8.cc
+    src/pose_letterbox_utils.cc
     # src/basketball_postprocess.cpp  # 已删除
     src/BYTETracker.cpp
     src/STrack.cpp
@@ -50,10 +50,10 @@ set(DUAL_THREAD_SRC
 
 # 纯姿态检测版本源文件
 set(POSE_ONLY_SRC
-    src/main_pose_only.cc
-    src/postprocess.cc
-    src/yolov8-pose.cc
-    src/letterbox_utils.cc
+    src/pose_main.cc
+    src/pose_postprocess.cc
+    src/pose_yolov8.cc
+    src/pose_letterbox_utils.cc
     src/BYTETracker.cpp
     src/STrack.cpp
     src/kalmanFilter.cpp
@@ -83,9 +83,9 @@ set(RIM_BASKETBALL_SIMPLE_SRC
 # 双摄像头双线程检测系统源文件
 set(DUAL_CAMERA_SRC
     src/dual_camera_detector.cc
-    src/postprocess.cc
-    src/yolov8-pose.cc
-    src/letterbox_utils.cc
+    src/pose_postprocess.cc
+    src/pose_yolov8.cc
+    src/pose_letterbox_utils.cc
     src/rim_basketball_postprocess_simple.cpp
     src/BYTETracker.cpp
     src/STrack.cpp
