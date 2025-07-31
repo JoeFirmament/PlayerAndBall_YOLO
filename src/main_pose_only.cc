@@ -11,10 +11,12 @@
 #include <string.h>
 #include <sys/time.h>
 #include <signal.h>
+#include <unistd.h>
 #include <memory>
 #include <chrono>
 #include <opencv2/opencv.hpp>
 #include "yolov8-pose.h"
+#include "postprocess.h"
 #include "image_utils.h"
 #include "file_utils.h"
 #include "image_drawing.h"
@@ -118,7 +120,6 @@ static int init_zero_copy_mem(rknn_app_context_t* app_ctx, zero_copy_context_t* 
         }
     }
     
-    printf("✓ 零拷贝内存初始化成功\n");
     return 0;
 }
 
@@ -135,13 +136,19 @@ static void release_zero_copy_mem(rknn_app_context_t* app_ctx, zero_copy_context
     }
 }
 
-// 优化的letterbox到NPU内存
-static int optimized_letterbox_to_npu(const cv::Mat& src, zero_copy_context_t* zc_ctx) {
-    // 创建OpenCV Mat直接指向NPU内存
-    cv::Mat npu_mat(zc_ctx->model_height, zc_ctx->model_width, CV_8UC3, zc_ctx->input_mem->virt_addr);
+// 优化的letterbox到NPU内存 - 使用工作版本的实现
+static int optimized_letterbox_to_npu(cv::Mat& src, zero_copy_context_t* zc_ctx) {
+    // 构造零拷贝letterbox上下文（使用已初始化的letterbox_ctx）
+    zero_copy_letterbox_context_t letterbox_zc_ctx;
+    letterbox_zc_ctx.input_mem = zc_ctx->input_mem;
+    letterbox_zc_ctx.input_attr = zc_ctx->input_attr;
+    letterbox_zc_ctx.model_width = zc_ctx->model_width;
+    letterbox_zc_ctx.model_height = zc_ctx->model_height;
+    letterbox_zc_ctx.model_channels = zc_ctx->model_channels;
+    letterbox_zc_ctx.letterbox_ctx = zc_ctx->letterbox_ctx;  // 使用预初始化的上下文
     
-    // 使用letterbox工具进行resize
-    return letterbox_resize(src, npu_mat, &zc_ctx->letterbox_ctx);
+    // 使用工作版本的letterbox函数
+    return zero_copy_letterbox_preprocess(src, &letterbox_zc_ctx);
 }
 
 // 加载相机标定参数
@@ -151,27 +158,68 @@ static int load_camera_calibration(const char* calib_file, camera_mapping_t* map
         return 0;
     }
     
-    cv::FileStorage fs(calib_file, cv::FileStorage::READ);
-    if (!fs.isOpened()) {
-        printf("⚠️ 无法打开标定文件: %s，跳过坐标映射功能\n", calib_file);
-        return 0;
-    }
-    
-    try {
-        fs["camera_matrix"] >> mapping->camera_matrix;
-        fs["dist_coeffs"] >> mapping->dist_coeffs;
-        fs["homography"] >> mapping->homography;
-        fs["image_width"] >> mapping->calib_width;
-        fs["image_height"] >> mapping->calib_height;
-        
-        mapping->is_initialized = true;
-        printf("✓ 成功加载相机标定参数: %s\n", calib_file);
-        printf("  标定分辨率: %dx%d\n", mapping->calib_width, mapping->calib_height);
-        return 0;
-    } catch (const cv::Exception& e) {
-        printf("⚠️ 标定文件格式错误: %s\n", e.what());
+    // 检查文件是否存在
+    FILE* check_file = fopen(calib_file, "r");
+    if (!check_file) {
+        printf("❌ 错误: Homography JSON文件不存在: %s\n", calib_file);
+        printf("请检查文件路径或创建标定文件\n");
         return -1;
     }
+    fclose(check_file);
+    
+    // 读取JSON文件
+    cv::FileStorage fs_homo(calib_file, cv::FileStorage::READ);
+    if (!fs_homo.isOpened()) {
+        printf("❌ 错误: 无法打开Homography JSON文件 %s\n", calib_file);
+        return -1;
+    }
+    
+    // 从JSON读取matrix数组并转换为3x3矩阵
+    cv::FileNode homo_node = fs_homo["matrix"];
+    if (homo_node.empty() || !homo_node.isSeq()) {
+        printf("错误: JSON文件中缺少matrix数组\n");
+        return -1;
+    }
+
+    if (homo_node.size() != 3) {
+        printf("错误: matrix数组应为3x3矩阵，实际为%zu行\n", homo_node.size());
+        return -1;
+    }
+
+    // 创建3x3矩阵并填充数据
+    mapping->homography = cv::Mat::zeros(3, 3, CV_64F);
+    int row = 0;
+    for (cv::FileNodeIterator it = homo_node.begin(); it != homo_node.end(); ++it, ++row) {
+        cv::FileNode row_node = *it;
+        if (!row_node.isSeq() || row_node.size() != 3) {
+            printf("错误: matrix第%d行应包含3个元素，实际为%zu个\n", row, row_node.size());
+            return -1;
+        }
+        
+        int col = 0;
+        for (cv::FileNodeIterator col_it = row_node.begin(); col_it != row_node.end(); ++col_it, ++col) {
+            mapping->homography.at<double>(row, col) = (double)*col_it;
+        }
+    }
+
+    printf("✓ Homography矩阵加载成功\n");
+
+    fs_homo.release();
+
+    // 验证Homography矩阵维度
+    if (mapping->homography.rows != 3 || mapping->homography.cols != 3) {
+        printf("错误: Homography矩阵维度不正确\n");
+        return -1;
+    }
+
+    // 不再需要相机内参和畸变系数，直接设置为空
+    mapping->camera_matrix = cv::Mat();
+    mapping->dist_coeffs = cv::Mat();
+    mapping->calib_width = 0;
+    mapping->calib_height = 0;
+
+    mapping->is_initialized = true;
+    return 0;
 }
 
 // 转换图像坐标到真实世界坐标
@@ -193,51 +241,68 @@ static void draw_pose_results(cv::Mat& img, object_detect_result_list* results,
     for (int i = 0; i < results->count; i++) {
         object_detect_result* result = &(results->results[i]);
         
-        // 转换检测框坐标
-        float x1 = (result->box.left - letterbox_ctx->x_pad) / letterbox_ctx->scale;
-        float y1 = (result->box.top - letterbox_ctx->y_pad) / letterbox_ctx->scale;
-        float x2 = (result->box.right - letterbox_ctx->x_pad) / letterbox_ctx->scale;
-        float y2 = (result->box.bottom - letterbox_ctx->y_pad) / letterbox_ctx->scale;
+        // post_process已经进行了坐标反算，直接使用即可
+        cv::Rect bbox(result->box.left, result->box.top,
+                     result->box.right - result->box.left,
+                     result->box.bottom - result->box.top);
+        
+        // ROI调试：输出检测框和ROI坐标
+        if (i == 0) {  // 只显示第一个检测目标的信息
+            printf("检测框: [%d,%d,%d,%d] -> ROI中心:(%.1f,%.1f)\n", 
+                   result->box.left, result->box.top, result->box.right, result->box.bottom,
+                   (bbox.x + bbox.x + bbox.width) * 0.5f, bbox.y + bbox.height);
+        }
         
         // 绘制检测框 (蓝色)
-        cv::rectangle(img, cv::Point((int)x1, (int)y1), cv::Point((int)x2, (int)y2), cv::Scalar(255, 0, 0), 2);
+        cv::rectangle(img, bbox, cv::Scalar(255, 0, 0), 2);
         
         // 绘制置信度
         char conf_str[50];
         snprintf(conf_str, sizeof(conf_str), "%.2f", result->prop);
-        cv::putText(img, conf_str, cv::Point((int)x1, (int)y1-5), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 1);
+        cv::putText(img, conf_str, cv::Point(bbox.x, bbox.y-5), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 1);
+        
+        // === 添加ROI地面定位点（紫色圆点） ===
+        // 计算检测框下边缘中点
+        cv::Point2f roi_bottom_center((bbox.x + bbox.x + bbox.width) * 0.5f, bbox.y + bbox.height);
+        
+        // 绘制ROI地面定位点（紫色圆点）
+        cv::circle(img, roi_bottom_center, 4, cv::Scalar(255, 0, 255), -1);
+        
+        // 如果有坐标映射，显示ROI的真实世界坐标
+        if (mapping->is_initialized) {
+            cv::Point2f roi_world_point = image_to_world_coordinate(roi_bottom_center, mapping);
+            char roi_coord_str[60];
+            snprintf(roi_coord_str, sizeof(roi_coord_str), "ROI:(%.0f,%.0f)mm", roi_world_point.x, roi_world_point.y);
+            cv::putText(img, roi_coord_str, cv::Point((int)roi_bottom_center.x - 40, (int)roi_bottom_center.y + 20), 
+                      cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 0, 255), 1);
+        }
+        
+        // post_process已经对关键点进行了坐标反算，直接使用即可
         
         // 绘制关键点
         for (int j = 0; j < OBJ_NUMB_MAX_SIZE; j++) {
-            if (result->point[j].score > 0.5) {
-                float kp_x = (result->point[j].x - letterbox_ctx->x_pad) / letterbox_ctx->scale;
-                float kp_y = (result->point[j].y - letterbox_ctx->y_pad) / letterbox_ctx->scale;
-                
-                cv::circle(img, cv::Point((int)kp_x, (int)kp_y), 3, cv::Scalar(0, 255, 0), -1);
+            if (result->keypoints[j][2] > 0.5) {
+                cv::circle(img, cv::Point((int)result->keypoints[j][0], (int)result->keypoints[j][1]), 3, cv::Scalar(0, 255, 0), -1);
                 
                 // 如果有坐标映射，显示真实世界坐标
                 if (mapping->is_initialized && j == 15) { // 左脚踝作为参考点
-                    cv::Point2f world_point = image_to_world_coordinate(cv::Point2f(kp_x, kp_y), mapping);
+                    cv::Point2f world_point = image_to_world_coordinate(cv::Point2f(result->keypoints[j][0], result->keypoints[j][1]), mapping);
                     char coord_str[50];
                     snprintf(coord_str, sizeof(coord_str), "(%.1f,%.1f)", world_point.x, world_point.y);
-                    cv::putText(img, coord_str, cv::Point((int)kp_x, (int)kp_y-10), 
+                    cv::putText(img, coord_str, cv::Point((int)result->keypoints[j][0], (int)result->keypoints[j][1]-10), 
                               cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 255, 0), 1);
                 }
             }
         }
         
-        // 绘制骨架
+        // 绘制骨架（直接使用后处理输出的关键点坐标）
         for (int k = 0; k < 19; k++) {
             int kpt_a = skeleton[k * 2] - 1;
             int kpt_b = skeleton[k * 2 + 1] - 1;
             
-            if (result->point[kpt_a].score > 0.5 && result->point[kpt_b].score > 0.5) {
-                float x_a = (result->point[kpt_a].x - letterbox_ctx->x_pad) / letterbox_ctx->scale;
-                float y_a = (result->point[kpt_a].y - letterbox_ctx->y_pad) / letterbox_ctx->scale;
-                float x_b = (result->point[kpt_b].x - letterbox_ctx->x_pad) / letterbox_ctx->scale;
-                float y_b = (result->point[kpt_b].y - letterbox_ctx->y_pad) / letterbox_ctx->scale;
-                
-                cv::line(img, cv::Point((int)x_a, (int)y_a), cv::Point((int)x_b, (int)y_b), 
+            if (result->keypoints[kpt_a][2] > 0.5 && result->keypoints[kpt_b][2] > 0.5) {
+                cv::line(img, cv::Point((int)result->keypoints[kpt_a][0], (int)result->keypoints[kpt_a][1]), 
+                        cv::Point((int)result->keypoints[kpt_b][0], (int)result->keypoints[kpt_b][1]),
                         cv::Scalar(0, 255, 255), 2);
             }
         }
@@ -251,20 +316,21 @@ static void process_tracking(cv::Mat& img, object_detect_result_list* results,
         return;
     }
     
-    // 转换为ByteTrack格式
-    std::vector<BYTETracker::Object> objects;
+    // 转换为ByteTrack格式（post_process已经反算过，直接使用）
+    std::vector<Object> objects;
     for (int i = 0; i < results->count; i++) {
         object_detect_result* result = &(results->results[i]);
         
-        float x1 = (result->box.left - letterbox_ctx->x_pad) / letterbox_ctx->scale;
-        float y1 = (result->box.top - letterbox_ctx->y_pad) / letterbox_ctx->scale;
-        float x2 = (result->box.right - letterbox_ctx->x_pad) / letterbox_ctx->scale;
-        float y2 = (result->box.bottom - letterbox_ctx->y_pad) / letterbox_ctx->scale;
+        // post_process已经将坐标反算到原图空间，直接使用
+        float x1 = result->box.left;
+        float y1 = result->box.top;
+        float x2 = result->box.right;
+        float y2 = result->box.bottom;
         
-        BYTETracker::Object obj;
-        obj.rect = cv::Rect2f(x1, y1, x2-x1, y2-y1);
-        obj.prob = result->prop;
-        obj.label = 0; // person
+        Object obj;
+        obj.box = cv::Rect2f(x1, y1, x2-x1, y2-y1);
+        obj.score = result->prop;
+        obj.classId = 0; // person
         objects.push_back(obj);
     }
     
@@ -274,11 +340,12 @@ static void process_tracking(cv::Mat& img, object_detect_result_list* results,
     // 绘制跟踪结果
     for (const auto& track : tracks) {
         cv::Scalar color = cv::Scalar(0, 255, 0); // 绿色跟踪框
-        cv::rectangle(img, track.rect, color, 2);
+        cv::Rect2f rect(track.tlbr[0], track.tlbr[1], track.tlbr[2]-track.tlbr[0], track.tlbr[3]-track.tlbr[1]);
+        cv::rectangle(img, rect, color, 2);
         
         char id_str[50];
         snprintf(id_str, sizeof(id_str), "ID:%d", track.track_id);
-        cv::putText(img, id_str, cv::Point((int)track.rect.x, (int)track.rect.y-20), 
+        cv::putText(img, id_str, cv::Point((int)track.tlbr[0], (int)track.tlbr[1]-20), 
                    cv::FONT_HERSHEY_SIMPLEX, 0.6, color, 2);
     }
 }
@@ -290,17 +357,36 @@ int main(int argc, char **argv) {
     memset(&rknn_app_ctx, 0, sizeof(rknn_app_context_t));
     
     if (argc < 2) {
-        printf("用法: %s <rknn模型路径> [标定文件路径]\n", argv[0]);
+        printf("用法: %s <rknn模型路径> [标定文件路径] [摄像头路径]\n", argv[0]);
         printf("示例: %s ../models/Q_yolov8_pose.rknn\n", argv[0]);
         printf("示例: %s ../models/Q_yolov8_pose.rknn ../data/2025_7_11pm.json\n", argv[0]);
+        printf("示例: %s ../models/Q_yolov8_pose.rknn ../data/2025_7_11pm.json /dev/v4l/by-id/usb-Generic_USB_Camera_200901010001-video-index0\n", argv[0]);
         return -1;
     }
     
     const char* model_path = argv[1];
-    const char* calib_path = (argc > 2) ? argv[2] : nullptr;
+    const char* calib_path = (argc > 2 && strlen(argv[2]) > 0) ? argv[2] : nullptr;
+    const char* camera_path = (argc > 3 && strlen(argv[3]) > 0) ? argv[3] : "/dev/v4l/by-id/usb-Generic_USB_Camera_200901010001-video-index0";
+    
+    // 检查设备路径是否存在，不存在则使用默认摄像头
+    int camera_id = 0;  // 默认摄像头ID
+    bool use_camera_path = false;
+    
+    if (camera_path && access(camera_path, F_OK) == 0) {
+        use_camera_path = true;
+    } else {
+        use_camera_path = false;
+    }
     
     // 设置信号处理
     signal(SIGINT, sig_handler);
+    
+    // 初始化后处理模块
+    ret = init_post_process();
+    if (ret != 0) {
+        printf("后处理模块初始化失败！\n");
+        return -1;
+    }
     
     printf("========================================\n");
     printf("        纯姿态检测系统 v1.0\n");
@@ -320,10 +406,10 @@ int main(int argc, char **argv) {
         printf("初始化YOLOv8姿态模型失败！\n");
         return -1;
     }
-    printf("✓ YOLOv8姿态模型初始化成功\n");
     
     // 预先声明变量，避免goto跨越初始化
     cv::Mat frame;
+    cv::Mat test_frame;  // 添加测试帧变量声明
     int frame_count = 0;
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
     cv::VideoCapture cap;
@@ -340,10 +426,19 @@ int main(int argc, char **argv) {
         load_camera_calibration(calib_path, &g_camera_mapping);
     }
     
-    // 打开摄像头
-    cap.open(0);
+    // 打开摄像头 - 强制使用V4L2后端
+    if (use_camera_path) {
+        cap.open(camera_path, cv::CAP_V4L2);
+        if (!cap.isOpened()) {
+            printf("❌ 无法打开USB摄像头: %s，尝试使用默认摄像头%d\n", camera_path, camera_id);
+            cap.open(camera_id, cv::CAP_V4L2);
+        }
+    } else {
+        cap.open(camera_id, cv::CAP_V4L2);
+    }
+    
     if (!cap.isOpened()) {
-        printf("无法打开摄像头！\n");
+        printf("❌ 无法打开摄像头！\n");
         goto exit;
     }
     
@@ -353,15 +448,26 @@ int main(int argc, char **argv) {
     cap.set(cv::CAP_PROP_FPS, 30);
     cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
     
-    printf("✓ 摄像头打开成功\n");
-    printf("摄像头分辨率: %.0fx%.0f @ %.0f FPS\n", 
-           cap.get(cv::CAP_PROP_FRAME_WIDTH), 
-           cap.get(cv::CAP_PROP_FRAME_HEIGHT),
-           cap.get(cv::CAP_PROP_FPS));
+    
+    // 读取第一帧用于初始化letterbox上下文
+    if (!cap.read(test_frame)) {
+        printf("❌ 无法读取测试帧！\n");
+        goto exit;
+    }
+    
+    // 初始化letterbox上下文 - 关闭调试模式
+    init_letterbox_context(&zero_copy_ctx.letterbox_ctx, 
+                          test_frame.cols, test_frame.rows,  // 原始图像尺寸
+                          rknn_app_ctx.model_width, rknn_app_ctx.model_height,  // 模型输入尺寸
+                          false);  // 关闭调试模式
+    
+    // 验证letterbox变换准确性
+    if (validate_letterbox_transform(&zero_copy_ctx.letterbox_ctx) != 0) {
+        printf("警告: letterbox变换验证失败，可能影响坐标精度\n");
+    }
     
     start_time = std::chrono::high_resolution_clock::now();
     
-    printf("开始处理视频流...\n");
     
     while (g_running) {
         // 读取帧
@@ -389,12 +495,52 @@ int main(int argc, char **argv) {
             continue;
         }
         
-        // 后处理
+        // 获取输出 - 使用工作版本的方式
+        rknn_output outputs[rknn_app_ctx.io_num.n_output];
+        memset(outputs, 0, sizeof(outputs));
+        for (int i = 0; i < rknn_app_ctx.io_num.n_output; i++) {
+            outputs[i].index = i;
+            outputs[i].want_float = (!rknn_app_ctx.is_quant);
+        }
+        ret = rknn_outputs_get(rknn_app_ctx.rknn_ctx, rknn_app_ctx.io_num.n_output, outputs, NULL);
+        if (ret < 0) {
+            printf("获取输出失败! ret=%d\n", ret);
+            continue;
+        }
+        
+        // 后处理 - 使用正确的letterbox参数
         object_detect_result_list pose_results;
-        ret = post_process(&rknn_app_ctx, zero_copy_ctx.output_mems, &zero_copy_ctx.letterbox_ctx, 0.25, 0.45, &pose_results);
+        
+        // 构建正确的letterbox参数
+        letterbox_t letterbox;
+        letterbox.x_pad = zero_copy_ctx.letterbox_ctx.offset_x;
+        letterbox.y_pad = zero_copy_ctx.letterbox_ctx.offset_y;
+        letterbox.scale = zero_copy_ctx.letterbox_ctx.scale;
+        
+        ret = post_process(&rknn_app_ctx, outputs, &letterbox, 0.5, 0.4, &pose_results);
+        
+        // 释放输出
+        rknn_outputs_release(rknn_app_ctx.rknn_ctx, rknn_app_ctx.io_num.n_output, outputs);
         if (ret != 0) {
             printf("后处理失败！\n");
             continue;
+        }
+        
+        // ROI调试：每30帧显示一次ROI和坐标映射信息
+        if (frame_count % 30 == 1 && pose_results.count > 0) {
+            object_detect_result* first_result = &pose_results.results[0];
+            cv::Rect bbox(first_result->box.left, first_result->box.top,
+                         first_result->box.right - first_result->box.left,
+                         first_result->box.bottom - first_result->box.top);
+            cv::Point2f roi_center((bbox.x + bbox.x + bbox.width) * 0.5f, bbox.y + bbox.height);
+            
+            printf("ROI调试 - 检测目标:%d, ROI中心:(%.1f,%.1f)", pose_results.count, roi_center.x, roi_center.y);
+            
+            if (g_camera_mapping.is_initialized) {
+                cv::Point2f world_coord = image_to_world_coordinate(roi_center, &g_camera_mapping);
+                printf(", 世界坐标:(%.0f,%.0f)mm", world_coord.x, world_coord.y);
+            }
+            printf("\n");
         }
         
         auto inference_end = std::chrono::high_resolution_clock::now();
@@ -440,6 +586,9 @@ exit:
     if (ret != 0) {
         printf("释放模型失败！\n");
     }
+    
+    // 清理后处理模块
+    deinit_post_process();
     
     cv::destroyAllWindows();
     printf("程序退出\n");
