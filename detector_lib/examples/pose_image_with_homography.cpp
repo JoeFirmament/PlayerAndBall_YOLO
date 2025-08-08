@@ -14,9 +14,9 @@ int main() {
     
     std::cout << "✓ 检测器创建成功" << std::endl;
     
-    // 2. 启用跟踪功能（简化版ID分配）
-    detector.enable_tracking(true);
-    std::cout << "✓ 启用跟踪功能" << std::endl;
+    // 2. 关闭跟踪功能（单图无需多帧跟踪）
+    detector.enable_tracking(false);
+    std::cout << "✓ 关闭跟踪功能" << std::endl;
     
     // 3. 尝试加载Homography标定文件
     bool calib_loaded = detector.load_calibration("../../data/2025_8_6_1280_720.json");

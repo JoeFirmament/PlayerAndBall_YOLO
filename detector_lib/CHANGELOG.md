@@ -72,11 +72,11 @@ E RKNN: rknn_init, load model failed!
   - 自动依赖解析，包含所有必需库
 
 #### 🎯 示例程序更新
-- **`pose_image_with_polar.cpp`** - 极坐标功能完整演示
-  - 智能路径查找模型和标定文件
-  - 双坐标系统输出和可视化
-  - 自动回退到手动配置模式
-- **所有示例程序** 统一使用 `PathUtils` 智能路径查找
+- 新增 `pose_camera_bytetrack_homography.cpp`：摄像头+ByteTrack+Homography+极坐标实时示例
+  - 支持命令行：`<model> <cam_index> [calibration]`
+  - 同步提供一键脚本 `run_pose_camera_bytetrack_homography.sh`
+- 单图示例（`pose_image*`）默认关闭 ByteTrack，仅输出检测与坐标；摄像头示例默认启用 ByteTrack
+- 所有示例统一使用 `PathUtils` 智能路径查找
 
 #### 📚 文档全面更新
 - **README.md**: 新增零配置使用指南，突出相对路径机制

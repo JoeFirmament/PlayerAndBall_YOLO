@@ -3,7 +3,7 @@
 ## 📦 交付文件
 
 1. **主文件**: `yolov8_detector_lib_rk3588_v1.0.0_20250806.tar.gz` (8.5MB)
-2. **校验文件**: `yolov8_detector_lib_rk3588_v1.0.0_20250806.tar.gz.md5`
+2. **校验文件**: `yolov8_detector_lib_rk3588_v1.0.3_20250808.tar.gz.md5`
 
 ## ✅ 验证完整性
 
@@ -15,8 +15,8 @@ md5sum -c yolov8_detector_lib_rk3588_v1.0.0_20250806.tar.gz.md5
 ## 🚀 用户快速开始
 
 ```bash
-# 1. 解压文件
-tar -xzf yolov8_detector_lib_rk3588_v1.0.0_20250806.tar.gz
+# 1. 解压文件（v1.0.3）
+tar -xzf yolov8_detector_lib_rk3588_v1.0.3.tar.gz
 
 # 2. 进入目录
 cd detector_lib
@@ -36,7 +36,7 @@ ls *_result.jpg
 
 - ✅ **完整源代码**: 姿态检测和篮筐篮球检测的封装实现
 - ✅ **预训练模型**: 两个RKNN量化模型 (INT8优化)
-- ✅ **示例程序**: 7个示例程序，覆盖所有使用场景
+- ✅ **示例程序**: 覆盖单图与摄像头实时（新增 `pose_camera_bytetrack_homography`）
 - ✅ **测试图片**: 验证用的测试图片
 - ✅ **RKNN运行库**: librknnrt.so (专用版本)
 - ✅ **自动化脚本**: 编译、测试、安装一键完成
@@ -44,10 +44,10 @@ ls *_result.jpg
 
 ## 🎯 核心功能
 
-### 姿态检测 ⭐
+### 姿态检测 ⭐（单图默认不启用ByteTrack）
 - **推理时间**: 49ms (真实NPU测试)
 - **检测精度**: 85%置信度，17个COCO关键点
-- **特色功能**: ByteTrack跟踪 + Homography坐标映射
+- **特色功能**: Homography坐标映射（单图），摄像头实时示例启用ByteTrack
 - **坐标转换**: 像素→世界坐标 (毫米级精度)
 
 ### 篮筐篮球检测  

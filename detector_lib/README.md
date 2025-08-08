@@ -45,9 +45,10 @@ cd detector_lib
 
 # 2. 直接运行示例程序
 cd bin/
-./pose_image_with_polar    # 🌟 极坐标演示
-./pose_image               # 基础姿态检测  
-./rim_basketball_image     # 篮筐篮球检测
+./pose_image_with_polar                 # 🌟 极坐标演示（单图，默认不启用跟踪）
+./pose_image                            # 基础姿态检测（单图，默认不启用跟踪）
+./rim_basketball_image                  # 篮筐篮球检测
+./pose_camera_bytetrack_homography      # 摄像头+ByteTrack+Homography+极坐标 实时示例（新增）
 ```
 
 ✅ **相对路径机制** - 无需设置环境变量，程序自动找到所有依赖
@@ -520,6 +521,22 @@ ROI底部中点: (672.0, 540.0)
 ✅ 检测结果已保存到: pose_with_polar_result.jpg
 === 极坐标功能测试完成 ===
 ```
+
+### 6. 摄像头实时示例（新增）
+
+```bash
+cd detector_lib
+# 推荐用一键脚本（自动设置库路径并查找默认模型/标定）
+./run_pose_camera_bytetrack_homography.sh 0
+
+# 或直接运行可执行：
+cd build/examples
+./pose_camera_bytetrack_homography ../models/Q_yolov8_pose.rknn 0 ../data/2025_8_6_1280_720.json
+```
+
+说明：
+- 摄像头示例默认启用 ByteTrack，并显示 Homography 世界坐标与极坐标。
+- 单图示例默认关闭 ByteTrack，不影响 ROI/关键点，`person_id` 为 -1。
 
 ### 4. 篮筐检测演示
 

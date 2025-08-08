@@ -141,6 +141,12 @@ if(EXISTS ${PROJECT_ROOT_DIR}/src)
     message(STATUS "Found external src headers: ${PROJECT_ROOT_DIR}/src")
 endif()
 
+# 同时加入顶层 include 目录（提供 BYTETracker.h、STrack.h、kalmanFilter.h、lapjv.h 等）
+if(EXISTS ${PROJECT_ROOT_DIR}/include)
+    list(APPEND PROJECT_INCLUDE_DIRS ${PROJECT_ROOT_DIR}/include)
+    message(STATUS "Found external include headers: ${PROJECT_ROOT_DIR}/include")
+endif()
+
 # 检查关键头文件是否可用
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/include/common.h)
     message(STATUS "✓ Using bundled common.h")
@@ -196,18 +202,29 @@ set(PROJECT_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/detector_file_utils.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/rim_basketball_postprocess_simple.cpp
     
-    # ByteTrack多目标跟踪支持（暂时禁用，等待完整实现）
-    # ${PROJECT_ROOT_DIR}/src/BYTETracker.cpp
-    # ${PROJECT_ROOT_DIR}/src/STrack.cpp
-    # ${PROJECT_ROOT_DIR}/src/kalmanFilter.cpp
-    # ${PROJECT_ROOT_DIR}/src/lapjv.cpp
-    
     # 注意: 暂时不包含RGA相关文件
     # ${PROJECT_ROOT_DIR}/utils/image_utils.c
     # ${PROJECT_ROOT_DIR}/src/pose_yolov8.cc
     # ${PROJECT_ROOT_DIR}/src/pose_postprocess.cc
     # ${PROJECT_ROOT_DIR}/src/pose_letterbox_utils.cc
 )
+
+# 启用/禁用 ByteTrack 多目标跟踪（默认启用）
+option(DETECTOR_LIB_ENABLE_TRACKING "Enable ByteTrack multi-object tracking" ON)
+
+if(DETECTOR_LIB_ENABLE_TRACKING)
+    message(STATUS "ByteTrack tracking: ENABLED")
+    list(APPEND PROJECT_SOURCES
+        ${PROJECT_ROOT_DIR}/src/BYTETracker.cpp
+        ${PROJECT_ROOT_DIR}/src/STrack.cpp
+        ${PROJECT_ROOT_DIR}/src/kalmanFilter.cpp
+        ${PROJECT_ROOT_DIR}/src/lapjv.cpp
+        ${PROJECT_ROOT_DIR}/src/utils.cpp
+    )
+    add_definitions(-DDETECTOR_LIB_ENABLE_TRACKING)
+else()
+    message(STATUS "ByteTrack tracking: DISABLED")
+endif()
 
 # 过滤存在的源文件
 set(FILTERED_PROJECT_SOURCES)

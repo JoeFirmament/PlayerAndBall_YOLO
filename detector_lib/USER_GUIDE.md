@@ -25,10 +25,11 @@ E RKNN: rknn_init, load model failed!
 ```
 detector_lib/
 ├── bin/                          # 可执行程序 (预编译)
-│   ├── pose_image               # 基础姿态检测
-│   ├── pose_image_with_polar    # 极坐标演示 ⭐ 新功能
-│   ├── pose_image_with_homography # Homography坐标映射
-│   └── rim_basketball_image     # 篮筐篮球检测
+│   ├── pose_image                         # 基础姿态检测（单图，默认不启用跟踪）
+│   ├── pose_image_with_polar              # 极坐标演示 ⭐ 新功能（单图，默认不启用跟踪）
+│   ├── pose_image_with_homography         # Homography坐标映射（单图，默认不启用跟踪）
+│   ├── rim_basketball_image               # 篮筐篮球检测
+│   └── pose_camera_bytetrack_homography   # 摄像头+ByteTrack+Homography+极坐标（新增）
 ├── lib/                          # 库文件 (包含所有依赖)
 │   ├── libdetector_lib.so*      # 我们的封装库
 │   └── librknnrt.so            # RKNN运行时库 ⭐ 内置
@@ -52,9 +53,10 @@ tar -xzf yolov8_detector_lib_rk3588_v1.0.3.tar.gz
 
 # 2. 直接运行 (零配置！)
 cd detector_lib/bin/
-./pose_image_with_polar    # 🌟 极坐标功能演示
-./pose_image               # 基础姿态检测  
-./rim_basketball_image     # 篮筐篮球检测
+./pose_image_with_polar                 # 🌟 极坐标功能演示（单图，默认不启用跟踪）
+./pose_image                            # 基础姿态检测（单图，默认不启用跟踪）
+./rim_basketball_image                  # 篮筐篮球检测
+./pose_camera_bytetrack_homography      # 摄像头+ByteTrack+Homography+极坐标（新增）
 
 # 就这么简单！无需任何环境变量或路径配置
 ```

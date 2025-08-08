@@ -39,9 +39,9 @@ int main() {
     PoseDetectorLib detector(model_path);
     std::cout << "✓ 检测器创建成功" << std::endl;
     
-    // 2. 启用跟踪功能
-    detector.enable_tracking(true);
-    std::cout << "✓ 启用跟踪功能" << std::endl;
+    // 2. 关闭跟踪功能（单图无需多帧跟踪）
+    detector.enable_tracking(false);
+    std::cout << "✓ 关闭跟踪功能" << std::endl;
     
     // 3. 智能查找并加载Homography标定文件（包含极坐标配置）
     std::string calib_path = PathUtils::find_calibration("2025_8_6_1280_720.json");

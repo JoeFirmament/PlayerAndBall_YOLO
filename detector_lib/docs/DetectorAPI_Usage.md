@@ -151,7 +151,7 @@ ROI底部中点: (672.0, 540.0)      ← 像素坐标
 
 ## 🎮 实际测试演示
 
-### 运行测试程序 (v1.0.3 最新)
+### 运行测试程序 (v1.0.3 最新，含摄像头实时示例)
 ```bash
 # 零配置使用 - 解压即用
 cd detector_lib/bin/
@@ -163,10 +163,14 @@ cd detector_lib/bin/
 ./pose_image_with_homography  
 
 # 极坐标系统测试 (推荐⭐)
-./pose_image_with_polar
+./pose_image_with_polar    # 单图，默认不启用跟踪
 
 # 篮筐篮球检测
 ./rim_basketball_image
+
+# 摄像头+ByteTrack+Homography+极坐标 实时示例（新增）
+cd ..
+./run_pose_camera_bytetrack_homography.sh 0
 ```
 
 ### 输出结果

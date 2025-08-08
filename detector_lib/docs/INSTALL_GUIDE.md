@@ -38,9 +38,10 @@ sudo usermod -a -G video $USER
 
 # 3. 直接运行示例程序
 cd bin/
-./pose_image_with_polar    # 极坐标功能演示
-./pose_image               # 基础姿态检测  
-./rim_basketball_image     # 篮筐篮球检测
+./pose_image_with_polar                 # 极坐标功能演示（单图，默认不启用跟踪）
+./pose_image                            # 基础姿态检测（单图，默认不启用跟踪）
+./rim_basketball_image                  # 篮筐篮球检测
+./pose_camera_bytetrack_homography      # 摄像头+ByteTrack+Homography+极坐标（新增）
 ```
 
 **就这么简单！** 无需编译，无需安装，无需配置环境变量。

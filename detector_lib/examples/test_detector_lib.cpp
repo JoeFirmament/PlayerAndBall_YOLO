@@ -73,9 +73,9 @@ void test_pose_detector() {
         std::cout << "初始状态: " << (int)pose_detector.get_status() << std::endl;
         std::cout << "是否已初始化: " << (pose_detector.is_initialized() ? "是" : "否") << std::endl;
         
-        // 3. 配置参数
+        // 3. 配置参数（单图测试不使用跟踪）
         pose_detector.set_confidence_threshold(0.3f);
-        pose_detector.enable_tracking(true);
+        pose_detector.enable_tracking(false);
         std::cout << "✓ 参数配置完成" << std::endl;
         
         // 4. 创建测试图像

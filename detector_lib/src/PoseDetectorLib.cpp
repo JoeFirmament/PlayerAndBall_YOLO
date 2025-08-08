@@ -8,8 +8,10 @@
 #include <fstream>
 #include <opencv2/opencv.hpp>
 
-// 添加ByteTrack支持（暂时禁用）
-// #include "BYTETracker.h"
+// 添加ByteTrack支持（编译开关控制）
+#ifdef DETECTOR_LIB_ENABLE_TRACKING
+#include "BYTETracker.h"
+#endif
 
 // 添加Homography相关
 #include <opencv2/calib3d.hpp>
@@ -45,11 +47,10 @@ public:
     explicit Impl(const std::string& model_path)
         : model_path_(model_path)
         , status_(DETECTOR_UNINITIALIZED)
-        , tracking_enabled_(true)
+        , tracking_enabled_(false)
         , conf_threshold_(0.1f)
         , has_homography_(false)
         , last_inference_time_ms_(-1)
-        // , byte_tracker_(30, 30)  // 30fps, 30帧缓冲（暂时禁用）
         , homography_loaded_(false)
         , polar_enabled_(false)
         , polar_origin_offset_(0.0f, 0.0f)
@@ -100,6 +101,50 @@ public:
         
         // 4. 后处理 - 使用真正的pose_post_process函数
         std::vector<PoseResult> results = postprocess_real_results(outputs, frame.size(), scale, x_pad, y_pad);
+
+        // 5. 可选：进行ByteTrack多目标跟踪，分配稳定ID（不改变ROI/关键点）
+#ifdef DETECTOR_LIB_ENABLE_TRACKING
+        if (tracking_enabled_ && !results.empty()) {
+            std::vector<Object> objects;
+            objects.reserve(results.size());
+            for (const auto& r : results) {
+                Object o;
+                o.box = cv::Rect2f((float)r.bbox.x, (float)r.bbox.y,
+                                   (float)r.bbox.width, (float)r.bbox.height);
+                o.score = r.confidence;
+                o.classId = 0; // person 类别
+                objects.push_back(o);
+            }
+
+            std::vector<STrack> tracks = byte_tracker_.update(objects);
+
+            // 初始化person_id为-1
+            for (auto& r : results) r.person_id = -1;
+
+            // 使用IoU将track回填到检测结果
+            for (const auto& t : tracks) {
+                cv::Rect2f tr(t.tlbr[0], t.tlbr[1], t.tlbr[2] - t.tlbr[0], t.tlbr[3] - t.tlbr[1]);
+                int best_idx = -1;
+                float best_iou = 0.0f;
+                for (int i = 0; i < (int)results.size(); ++i) {
+                    const auto& b = results[i].bbox;
+                    cv::Rect2f det((float)b.x, (float)b.y, (float)b.width, (float)b.height);
+                    // 计算IoU（简易版）
+                    float x1 = std::max(det.x, tr.x);
+                    float y1 = std::max(det.y, tr.y);
+                    float x2 = std::min(det.x + det.width, tr.x + tr.width);
+                    float y2 = std::min(det.y + det.height, tr.y + tr.height);
+                    float inter = (x2 > x1 && y2 > y1) ? (x2 - x1) * (y2 - y1) : 0.0f;
+                    float uni = det.width * det.height + tr.width * tr.height - inter;
+                    float iou = uni > 0.0f ? inter / uni : 0.0f;
+                    if (iou > best_iou) { best_iou = iou; best_idx = i; }
+                }
+                if (best_idx >= 0 && best_iou > 0.1f) {
+                    results[best_idx].person_id = t.track_id;
+                }
+            }
+        }
+#endif
         
         // 释放输出
         rknn_outputs_release(rknn_ctx_.ctx, rknn_ctx_.io_num.n_output, outputs);
@@ -259,8 +304,10 @@ private:
     internal::RknnContext rknn_ctx_;
     internal::ZeroCopyMemory zero_copy_mem_;
     
-    // ByteTrack跟踪器（暂时禁用）
-    // BYTETracker byte_tracker_;
+    // ByteTrack跟踪器（编译开关控制）
+#ifdef DETECTOR_LIB_ENABLE_TRACKING
+    BYTETracker byte_tracker_{}; // 使用默认参数: fps=30, buffer=30
+#endif
     
     // Homography变换矩阵
     cv::Mat homography_matrix_;

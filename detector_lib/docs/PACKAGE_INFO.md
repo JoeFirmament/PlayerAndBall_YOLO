@@ -29,10 +29,11 @@ detector_lib/
 │
 ├── 💡 examples/                  # 示例程序
 │   ├── CMakeLists.txt                   # 示例编译配置
-│   ├── pose_image.cpp                   # 基础姿态检测
-│   ├── pose_image_with_homography.cpp  # 姿态+Homography坐标映射
-│   ├── rim_basketball_image.cpp         # 篮筐篮球检测
-│   └── test_detector_lib.cpp            # 综合功能测试
+│   ├── pose_image.cpp                        # 基础姿态检测（单图，默认不启用跟踪）
+│   ├── pose_image_with_homography.cpp       # 姿态+Homography坐标映射（单图，默认不启用跟踪）
+│   ├── rim_basketball_image.cpp              # 篮筐篮球检测
+│   ├── test_detector_lib.cpp                 # 综合功能测试
+│   └── pose_camera_bytetrack_homography.cpp  # 摄像头+ByteTrack+Homography+极坐标（新增）
 │
 ├── 🤖 models/                    # AI模型文件
 │   ├── Q_yolov8_pose.rknn      # 姿态检测模型 (49ms推理)

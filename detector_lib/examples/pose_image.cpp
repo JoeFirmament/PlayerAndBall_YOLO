@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
         
         // 配置参数 - 使用工作版本的阈值
         detector.set_confidence_threshold(0.5f);
-        detector.enable_tracking(true);
+        detector.enable_tracking(false);
         
         // 检测
         std::cout << "正在检测..." << std::endl;
