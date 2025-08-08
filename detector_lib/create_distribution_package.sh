@@ -7,7 +7,7 @@ set -e
 
 # 配置变量
 PACKAGE_NAME="detector_lib_package"
-PACKAGE_VERSION="1.0.0"
+PACKAGE_VERSION="1.0.3"
 BUILD_DIR="build"
 DIST_DIR="dist"
 
@@ -22,7 +22,7 @@ fi
 
 # 检查必要文件
 required_files=(
-    "$BUILD_DIR/libdetector_lib.so.1.0.0"
+    "$BUILD_DIR/libdetector_lib.so.1.0.3"
     "$BUILD_DIR/libdetector_lib.so"
     "$BUILD_DIR/libdetector_lib.a"
     "include/detector_lib.h"
@@ -42,7 +42,7 @@ mkdir -p "$DIST_DIR/$PACKAGE_NAME"/{lib,include,models,examples,scripts}
 
 # 复制库文件
 echo "📚 复制库文件..."
-cp "$BUILD_DIR/libdetector_lib.so.1.0.0" "$DIST_DIR/$PACKAGE_NAME/lib/"
+cp "$BUILD_DIR/libdetector_lib.so.1.0.3" "$DIST_DIR/$PACKAGE_NAME/lib/"
 cp "$BUILD_DIR/libdetector_lib.so.1" "$DIST_DIR/$PACKAGE_NAME/lib/"
 cp "$BUILD_DIR/libdetector_lib.so" "$DIST_DIR/$PACKAGE_NAME/lib/"
 cp "$BUILD_DIR/libdetector_lib.a" "$DIST_DIR/$PACKAGE_NAME/lib/"
@@ -54,8 +54,10 @@ cp include/detector_types.h "$DIST_DIR/$PACKAGE_NAME/include/"
 cp include/PoseDetectorLib.h "$DIST_DIR/$PACKAGE_NAME/include/"
 cp include/RimBasketballDetectorLib.h "$DIST_DIR/$PACKAGE_NAME/include/"
 # 复制其他必要的头文件
-cp include/common.h "$DIST_DIR/$PACKAGE_NAME/include/" 2>/dev/null || true
-cp include/file_utils.h "$DIST_DIR/$PACKAGE_NAME/include/" 2>/dev/null || true
+# 同步最新版头文件命名
+cp include/detector_common_types.h "$DIST_DIR/$PACKAGE_NAME/include/" 2>/dev/null || true
+cp include/detector_file_utils.h "$DIST_DIR/$PACKAGE_NAME/include/" 2>/dev/null || true
+cp include/detector_path_utils.h "$DIST_DIR/$PACKAGE_NAME/include/" 2>/dev/null || true
 
 # 复制模型文件（如果存在）
 echo "🤖 复制模型文件..."
@@ -67,8 +69,20 @@ fi
 echo "💡 复制示例程序..."
 if [ -d "$BUILD_DIR/examples" ]; then
     cp "$BUILD_DIR/examples/pose_image" "$DIST_DIR/$PACKAGE_NAME/examples/" 2>/dev/null || true
-    cp "$BUILD_DIR/examples/rim_basketball_image" "$DIST_DIR/$PACKAGE_NAME/examples/" 2>/dev/null || true
+    cp "$BUILD_DIR/examples/pose_image_with_polar" "$DIST_DIR/$PACKAGE_NAME/examples/" 2>/dev/null || true
     cp "$BUILD_DIR/examples/pose_image_with_homography" "$DIST_DIR/$PACKAGE_NAME/examples/" 2>/dev/null || true
+    cp "$BUILD_DIR/examples/rim_basketball_image" "$DIST_DIR/$PACKAGE_NAME/examples/" 2>/dev/null || true
+    cp "$BUILD_DIR/examples/pose_camera_bytetrack_homography" "$DIST_DIR/$PACKAGE_NAME/examples/" 2>/dev/null || true
+fi
+
+# 复制运行时依赖（RKNN Runtime）
+echo "🧩 复制运行时依赖 (RKNN Runtime)..."
+if [ -f "../libs/librknnrt.so" ]; then
+    cp ../libs/librknnrt.so "$DIST_DIR/$PACKAGE_NAME/lib/"
+elif [ -f "libs/librknnrt.so" ]; then
+    cp libs/librknnrt.so "$DIST_DIR/$PACKAGE_NAME/lib/"
+else
+    echo "⚠️  警告: 未找到 librknnrt.so，运行示例可能需要系统已安装RKNN Runtime"
 fi
 
 # 创建示例代码文件
@@ -266,6 +280,7 @@ chmod +x "$DIST_DIR/$PACKAGE_NAME/uninstall.sh"
 echo "📖 复制文档..."
 cp README.md "$DIST_DIR/$PACKAGE_NAME/" 2>/dev/null || echo "⚠️  警告: 未找到README.md"
 cp USER_GUIDE.md "$DIST_DIR/$PACKAGE_NAME/" 2>/dev/null || echo "⚠️  警告: 未找到USER_GUIDE.md"
+cp PLATFORM_LOG.md "$DIST_DIR/$PACKAGE_NAME/" 2>/dev/null || true
 
 # 创建简单的README
 cat > "$DIST_DIR/$PACKAGE_NAME/README_QUICK.md" << EOF
@@ -338,6 +353,4 @@ echo "  1. 解压: tar -xzf ${PACKAGE_NAME}_v${PACKAGE_VERSION}_$(date +%Y%m%d).
 echo "  2. 安装: cd $PACKAGE_NAME && sudo ./install.sh"
 echo "  3. 测试: cd examples && g++ sample_code.cpp \$(pkg-config --cflags --libs detector_lib) -o test"
 echo ""
-EOF
-
-chmod +x "$DIST_DIR/$PACKAGE_NAME/create_distribution_package.sh"
+echo "提示: 预编译示例位于 examples/，库文件位于 lib/。"

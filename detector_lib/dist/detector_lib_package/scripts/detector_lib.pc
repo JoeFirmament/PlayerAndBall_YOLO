@@ -1,0 +1,11 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: DetectorLib
+Description: YOLOv8 Pose and Basketball Detection Library for RK3588
+Version: 1.0.3
+Requires: opencv4
+Libs: -L${libdir} -ldetector_lib -lrknn_api -lpthread
+Cflags: -I${includedir}
