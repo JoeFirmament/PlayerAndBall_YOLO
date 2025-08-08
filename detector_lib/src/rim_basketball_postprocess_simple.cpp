@@ -104,10 +104,7 @@ static int postprocess_6_outputs_basketball_rim(rknn_output* outputs, rknn_tenso
     int8_t* reg_outputs[3] = {(int8_t*)outputs[0].buf, (int8_t*)outputs[2].buf, (int8_t*)outputs[4].buf};
     int8_t* cls_outputs[3] = {(int8_t*)outputs[1].buf, (int8_t*)outputs[3].buf, (int8_t*)outputs[5].buf};
     
-    printf("模型输出量化参数:\n");
-    for (int i = 0; i < 6; i++) {
-        printf("输出[%d]: zp=%d, scale=%.6f\n", i, output_attrs[i].zp, output_attrs[i].scale);
-    }
+    
     
     // 统计每帧检测数量
     int frame_detections = 0;
@@ -131,7 +128,7 @@ static int postprocess_6_outputs_basketball_rim(rknn_output* outputs, rknn_tenso
         int cls_zp = output_attrs[layer * 2 + 1].zp;
         float cls_scale = output_attrs[layer * 2 + 1].scale;
         
-        printf("处理第%d层: stride=%d, size=%dx%d\n", layer, stride, width, height);
+        
         
         // 遍历网格
         for (int h = 0; h < height; h++) {
@@ -167,10 +164,7 @@ static int postprocess_6_outputs_basketball_rim(rknn_output* outputs, rknn_tenso
                     }
                 }
                 
-                // 简单调试输出
-                if (layer == 0 && h < 3 && w < 3 && max_conf > 0.5) {
-                    printf("网格[%d,%d] 最大置信度=%.4f, 类别=%d\n", h, w, max_conf, best_class);
-                }
+                
                 
                 // 检查是否超过阈值
                 if (max_conf > conf_threshold) {
@@ -198,15 +192,7 @@ static int postprocess_6_outputs_basketball_rim(rknn_output* outputs, rknn_tenso
                     float x2 = anchor_x + right_dist * stride;
                     float y2 = anchor_y + bottom_dist * stride;
                     
-                    // 调试：输出距离值
-                    static int debug_count = 0;
-                    if (debug_count < 3 && layer == 2) {
-                        printf("🔍 边界框调试[%d]: 网格[%d,%d] 距离值: left=%.2f, top=%.2f, right=%.2f, bottom=%.2f\n", 
-                               debug_count, h, w, left_dist, top_dist, right_dist, bottom_dist);
-                        printf("🔍 计算结果: anchor(%.1f,%.1f) -> 边界框[%.1f,%.1f,%.1f,%.1f] 大小=%.1fx%.1f\n",
-                               anchor_x, anchor_y, x1, y1, x2, y2, x2-x1, y2-y1);
-                        debug_count++;
-                    }
+                    
                     
                     // 边界检查
                     x1 = fmaxf(0.0f, fminf(x1, 640.0f));
@@ -228,17 +214,14 @@ static int postprocess_6_outputs_basketball_rim(rknn_output* outputs, rknn_tenso
                         if (best_class == 0) basketball_count++;
                         else if (best_class == 1) rim_count++;
                         
-                        if (detect_rects.size() <= 5) {
-                            printf("检测到目标[层%d]: 类别%d(%s), 置信度%.3f, 位置[%.1f,%.1f,%.1f,%.1f]\n",
-                                   layer, best_class, class_names[best_class], max_conf, x1, y1, x2, y2);
-                        }
+                        
                     }
                 }
             }
         }
     }
     
-    printf("原始检测数量: %d (篮球:%d, 篮筐:%d)\n", (int)detect_rects.size(), basketball_count, rim_count);
+    
     
     if (detect_rects.empty()) {
         return 0;
@@ -294,20 +277,7 @@ static int postprocess_6_outputs_basketball_rim(rknn_output* outputs, rknn_tenso
         result->count++;
     }
     
-    printf("✓ NMS后检测数量: %d\n", result->count);
     
-    // 强制输出具体检测结果
-    if (result->count > 0) {
-        printf("=== 检测结果详情 ===\n");
-        for (int i = 0; i < result->count && i < 10; i++) {
-            RimBasketballDetection* det = &result->detections[i];
-            printf("[%d] %s: 置信度=%.3f, 位置=(%.1f,%.1f), 大小=%.1fx%.1f\n", 
-                   i, det->class_name, det->confidence, det->x, det->y, det->w, det->h);
-        }
-        printf("====================\n");
-    } else {
-        printf("❌ 没有检测到任何目标！\n");
-    }
     
     return 0;
 }
@@ -327,22 +297,14 @@ int process_rim_basketball_outputs(rknn_output* outputs, rknn_tensor_attr* outpu
         num_outputs++;
     }
     
-    printf("检测到%d个模型输出\n", num_outputs);
+    
     
     // 打印输出维度信息
-    for (int i = 0; i < num_outputs; i++) {
-        printf("输出[%d]: ", i);
-        for (int j = 0; j < output_attrs[i].n_dims; j++) {
-            printf("%d ", output_attrs[i].dims[j]);
-        }
-        printf("(type: %s, size: %d)\n", 
-               output_attrs[i].type == RKNN_TENSOR_INT8 ? "INT8" : "FP32",
-               output_attrs[i].size);
-    }
+    
     
     // 支持6输出格式
     if (num_outputs == 6) {
-        printf("使用6输出模型后处理 (篮球篮筐版)\n");
+        
         return postprocess_6_outputs_basketball_rim(outputs, output_attrs, conf_threshold, nms_threshold, result);
     } else {
         printf("❌ 当前仅支持6输出模型格式，检测到: %d个输出\n", num_outputs);

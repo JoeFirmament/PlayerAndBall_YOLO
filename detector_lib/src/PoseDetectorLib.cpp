@@ -446,7 +446,7 @@ private:
     std::vector<PoseResult> postprocess_real_results(rknn_output* outputs, const cv::Size& frame_size, float scale, int x_pad, int y_pad) {
         std::vector<PoseResult> results;
         
-        printf("🔍 使用真正的姿态检测后处理逻辑...\n");
+        
         
         // 构建letterbox参数
         letterbox_t letterbox;
@@ -462,8 +462,6 @@ private:
             printf("❌ 姿态后处理失败! ret=%d\n", ret);
             return results;
         }
-        
-        printf("✅ 姿态后处理成功: 检测到%d个人\n", pose_results.count);
         
         // 暂时跳过ByteTrack处理，直接使用检测结果
         
@@ -533,7 +531,7 @@ private:
         memset(od_results, 0, sizeof(object_detect_result_list));
         int index = 0;
         
-        printf("📊 模型信息: %dx%d, 量化=%s\n", model_in_w, model_in_h, rknn_ctx_.is_quant ? "是" : "否");
+        
         
         // 处理前3个输出张量（边界框检测） - 严格按照pose_postprocess.cc
         for (int i = 0; i < 3; i++) {
@@ -541,8 +539,7 @@ private:
             grid_w = rknn_ctx_.output_attrs[i].dims[3];
             stride = model_in_h / grid_h;
             
-            printf("  处理输出%d: grid=%dx%d, stride=%d, 类型=%d\n", 
-                   i, grid_w, grid_h, stride, rknn_ctx_.output_attrs[i].type);
+            
             
             if (rknn_ctx_.is_quant) {
                 validCount += process_i8((int8_t*)_outputs[i].buf, grid_h, grid_w, stride, 
@@ -556,7 +553,7 @@ private:
             index += grid_h * grid_w;
         }
         
-        printf("✓ 边界框检测完成: 找到%d个候选框\n", validCount);
+        
         
         // 如果没有检测到目标
         if (validCount <= 0) {
@@ -575,7 +572,7 @@ private:
             nms(validCount, filterBoxes, classId, indexArray, c, nms_threshold);
         }
         
-        printf("✓ NMS处理完成\n");
+        
         
         int last_count = 0;
         od_results->count = 0;
@@ -624,7 +621,7 @@ private:
         }
         od_results->count = last_count;
         
-        printf("✅ 最终检测结果: %d个目标\n", od_results->count);
+        
         return 0;
     }
     
@@ -710,8 +707,7 @@ private:
         int validCount = 0;
         
         int8_t thres_i8 = qnt_f32_to_affine(unsigmoid(threshold), zp, scale);
-        printf("    Int8处理: threshold=%.3f -> i8=%d, ZP=%d, Scale=%.6f\n", 
-               threshold, (int)thres_i8, zp, scale);
+        
         
         for (int h = 0; h < grid_h; h++) {
             for (int w = 0; w < grid_w; w++) {
@@ -721,10 +717,7 @@ private:
                 if (conf_i8 >= thres_i8) {
                     float box_conf_f32 = sigmoid(deqnt_affine_to_f32(conf_i8, zp, scale));
                     
-                    if (validCount < 5) { // 只打印前5个检测框的信息
-                        printf("    候选框[%d]: h=%d, w=%d, i8_conf=%d, f32_conf=%.3f, sigmoid_conf=%.3f\n", 
-                               validCount, h, w, (int)conf_i8, deqnt_affine_to_f32(conf_i8, zp, scale), box_conf_f32);
-                    }
+                    
                     
                     // DFL边界框回归 - 处理int8数据
                     float loc[input_loc_len];
@@ -766,7 +759,7 @@ private:
                 }
             }
         }
-        printf("    Int8层完成: 找到%d个候选框\n", validCount);
+        
         return validCount;
     }
     
@@ -779,7 +772,7 @@ private:
         int validCount = 0;
         float thres_fp = unsigmoid(threshold);
         
-        printf("    Float16处理: threshold=%.3f -> %.3f\n", threshold, thres_fp);
+        
         
         for (int h = 0; h < grid_h; h++) {
             for (int w = 0; w < grid_w; w++) {
@@ -789,10 +782,7 @@ private:
                 if (conf_raw >= thres_fp) {
                     float box_conf_f32 = sigmoid(conf_raw);
                     
-                    if (validCount < 5) { // 只打印前5个检测框的信息
-                        printf("    候选框[%d]: h=%d, w=%d, raw_conf=%.3f, sigmoid_conf=%.3f\n", 
-                               validCount, h, w, conf_raw, box_conf_f32);
-                    }
+                    
                     
                     // DFL边界框回归 - 处理Float16数据
                     float loc[input_loc_len];
@@ -834,7 +824,7 @@ private:
                 }
             }
         }
-        printf("    Float16层完成: 找到%d个候选框\n", validCount);
+        
         return validCount;
     }
     

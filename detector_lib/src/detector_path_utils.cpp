@@ -77,17 +77,11 @@ std::string PathUtils::find_model(const std::string& model_name) {
     for (const auto& base_path : search_paths) {
         std::string full_path = base_path + "/" + model_name;
         if (file_exists(full_path)) {
-            std::cout << "✓ 找到模型文件: " << full_path << std::endl;
             return full_path;
         }
     }
     
-    // 如果所有路径都找不到，输出搜索路径帮助调试
-    std::cerr << "⚠️ 未找到模型文件: " << model_name << std::endl;
-    std::cerr << "搜索路径:" << std::endl;
-    for (const auto& path : search_paths) {
-        std::cerr << "  - " << path << std::endl;
-    }
+    
     
     return "";
 }
@@ -98,17 +92,11 @@ std::string PathUtils::find_calibration(const std::string& calibration_name) {
     for (const auto& base_path : search_paths) {
         std::string full_path = base_path + "/" + calibration_name;
         if (file_exists(full_path)) {
-            std::cout << "✓ 找到标定文件: " << full_path << std::endl;
             return full_path;
         }
     }
     
-    // 如果所有路径都找不到，输出搜索路径帮助调试
-    std::cerr << "⚠️ 未找到标定文件: " << calibration_name << std::endl;
-    std::cerr << "搜索路径:" << std::endl;
-    for (const auto& path : search_paths) {
-        std::cerr << "  - " << path << std::endl;
-    }
+    
     
     return "";
 }

@@ -192,7 +192,7 @@ private:
     std::vector<RimBasketballResult> postprocess_real_results(const cv::Size& frame_size, float scale, int x_pad, int y_pad) {
         std::vector<RimBasketballResult> results;
         
-        printf("🔍 使用真正的篮筐篮球检测后处理逻辑...\n");
+        
         
         // 调用真正的rim_basketball后处理函数
         RimBasketballDetectionResult detection_result;
@@ -202,8 +202,6 @@ private:
             printf("❌ 篮筐篮球后处理失败! ret=%d\n", ret);
             return results;
         }
-        
-        printf("✅ 篮筐篮球后处理成功: 检测到%d个目标\n", detection_result.count);
         
         // 转换为我们的RimBasketballResult格式
         for (int i = 0; i < detection_result.count; i++) {
@@ -266,9 +264,7 @@ private:
             return ret;
         }
         
-        printf("📊 模型信息: %dx%d, 量化=%s\n", rknn_ctx_.model_width, rknn_ctx_.model_height, 
-               rknn_ctx_.is_quant ? "是" : "否");
-        printf("🔍 使用6输出模型后处理 (篮球篮筐版)\n");
+        
         
         // 模型参数
         const int strides[3] = {8, 16, 32};
@@ -278,10 +274,7 @@ private:
         int8_t* reg_outputs[3] = {(int8_t*)outputs[0].buf, (int8_t*)outputs[2].buf, (int8_t*)outputs[4].buf};
         int8_t* cls_outputs[3] = {(int8_t*)outputs[1].buf, (int8_t*)outputs[3].buf, (int8_t*)outputs[5].buf};
         
-        printf("模型输出量化参数:\n");
-        for (int i = 0; i < 6; i++) {
-            printf("输出[%d]: zp=%d, scale=%.6f\n", i, rknn_ctx_.output_attrs[i].zp, rknn_ctx_.output_attrs[i].scale);
-        }
+        
         
         std::vector<DetectRect> detect_rects;
         int basketball_count = 0;
@@ -302,7 +295,7 @@ private:
             int cls_zp = rknn_ctx_.output_attrs[layer * 2 + 1].zp;
             float cls_scale = rknn_ctx_.output_attrs[layer * 2 + 1].scale;
             
-            printf("处理第%d层: stride=%d, size=%dx%d\n", layer, stride, width, height);
+            
             
             // 遍历网格
             for (int h = 0; h < height; h++) {
@@ -375,7 +368,7 @@ private:
             }
         }
         
-        printf("原始检测数量: %d (篮球:%d, 篮筐:%d)\n", (int)detect_rects.size(), basketball_count, rim_count);
+        
         
         if (detect_rects.empty()) {
             rknn_outputs_release(rknn_ctx_.ctx, rknn_ctx_.io_num.n_output, outputs);
@@ -434,7 +427,7 @@ private:
         
         rknn_outputs_release(rknn_ctx_.ctx, rknn_ctx_.io_num.n_output, outputs);
         
-        printf("✅ NMS后检测数量: %d\n", result->count);
+        
         return 0;
     }
     

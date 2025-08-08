@@ -29,37 +29,25 @@ RknnContext::~RknnContext() {
 
 bool RknnContext::init_from_file(const std::string& model_path) {
     if (is_initialized) {
-        printf("✓ RKNN上下文已初始化\n");
         return true;
     }
     
-    printf("正在加载模型: %s\n", model_path.c_str());
+    
     
     if (!file_exists(model_path)) {
         printf("❌ 错误: 找不到模型文件: %s\n", model_path.c_str());
-        printf("请检查:\n");
-        printf("   1. 文件路径是否正确\n");
-        printf("   2. 文件是否存在\n");
-        printf("   3. 文件权限是否可读\n");
         return false;
     }
     
-    printf("✓ 模型文件存在，开始加载...\n");
     
-    // 使用文件路径模式初始化RKNN（与原版程序相同）
-    printf("正在初始化NPU (文件路径模式)...\n");
     int ret = rknn_init(&ctx, (char*)model_path.c_str(), 0, 0, nullptr);
     
     if (ret < 0) {
         printf("❌ 错误: RKNN初始化失败 (错误码: %d)\n", ret);
-        printf("可能原因:\n");
-        printf("   1. 模型文件损坏或格式不正确\n");
-        printf("   2. NPU设备权限不足 (运行: sudo chmod 666 /dev/dri/renderD*)\n");
-        printf("   3. RKNN运行时库版本不匹配\n");
         return false;
     }
     
-    printf("✓ RKNN初始化成功，正在查询模型信息...\n");
+    
     
     // 获取输入输出信息
     ret = rknn_query(ctx, RKNN_QUERY_IN_OUT_NUM, &io_num, sizeof(io_num));
@@ -69,7 +57,6 @@ bool RknnContext::init_from_file(const std::string& model_path) {
         return false;
     }
     
-    printf("✓ 模型信息: 输入=%d, 输出=%d\n", io_num.n_input, io_num.n_output);
     
     // 获取输入属性
     input_attrs = new rknn_tensor_attr[io_num.n_input];
@@ -78,7 +65,7 @@ bool RknnContext::init_from_file(const std::string& model_path) {
         input_attrs[i].index = i;
         ret = rknn_query(ctx, RKNN_QUERY_INPUT_ATTR, &input_attrs[i], sizeof(rknn_tensor_attr));
         if (ret < 0) {
-            printf("❌ 错误: 无法查询输入属性 %d (错误码: %d)\n", i, ret);
+        printf("❌ 错误: 无法查询输入属性 %d (错误码: %d)\n", i, ret);
             cleanup();
             return false;
         }
@@ -91,7 +78,7 @@ bool RknnContext::init_from_file(const std::string& model_path) {
         output_attrs[i].index = i;
         ret = rknn_query(ctx, RKNN_QUERY_OUTPUT_ATTR, &output_attrs[i], sizeof(rknn_tensor_attr));
         if (ret < 0) {
-            printf("❌ 错误: 无法查询输出属性 %d (错误码: %d)\n", i, ret);
+        printf("❌ 错误: 无法查询输出属性 %d (错误码: %d)\n", i, ret);
             cleanup();
             return false;
         }
@@ -119,10 +106,7 @@ bool RknnContext::init_from_file(const std::string& model_path) {
                 input_attrs[0].type == RKNN_TENSOR_UINT8);
     
     is_initialized = true;
-    printf("✅ RKNN模型加载成功!\n");
-    printf("   模型输入尺寸: %dx%dx%d\n", model_width, model_height, model_channel);
-    printf("   输入格式: %s\n", (input_attrs[0].fmt == RKNN_TENSOR_NCHW) ? "NCHW" : "NHWC");
-    printf("   量化模式: %s\n", is_quant ? "INT8/UINT8" : "FP16/FP32");
+    
     return true;
 }
 
