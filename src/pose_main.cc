@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <memory>
 #include <chrono>
+#include <cmath>
 #include <opencv2/opencv.hpp>
 #include "pose_yolov8.h"
 #include "pose_postprocess.h"
@@ -47,6 +48,12 @@ typedef struct {
     letterbox_context_t letterbox_ctx; // letterbox上下文
 } zero_copy_context_t;
 
+// 极坐标结构体
+typedef struct {
+    double r;      // 距离（半径，单位：mm）
+    double theta;  // 角度（弧度）
+} polar_coordinate_t;
+
 // 相机标定和Homography相关的结构体
 typedef struct {
     cv::Mat camera_matrix;    // 相机内参矩阵
@@ -55,6 +62,8 @@ typedef struct {
     bool is_initialized;      // 是否已初始化
     int calib_width;          // 标定分辨率宽
     int calib_height;         // 标定分辨率高
+    cv::Point2f origin_offset; // 极坐标系原点偏移量（笛卡尔坐标，单位：mm）
+    bool use_polar;           // 是否使用极坐标系
 } camera_mapping_t;
 
 // 全局变量
@@ -212,6 +221,28 @@ static int load_camera_calibration(const char* calib_file, camera_mapping_t* map
         return -1;
     }
 
+    // 读取原点偏移量（可选）
+    cv::FileNode origin_node = fs_homo["origin_offset"];
+    if (!origin_node.empty() && origin_node.isSeq() && origin_node.size() == 2) {
+        mapping->origin_offset.x = (float)origin_node[0];
+        mapping->origin_offset.y = (float)origin_node[1];
+        printf("✓ 原点偏移量: (%.1f, %.1f)mm\n", mapping->origin_offset.x, mapping->origin_offset.y);
+    } else {
+        mapping->origin_offset.x = 0.0f;
+        mapping->origin_offset.y = 0.0f;
+        printf("⚠️ 未找到原点偏移量，使用默认值 (0, 0)\n");
+    }
+    
+    // 读取极坐标开关（可选）
+    cv::FileNode polar_node = fs_homo["use_polar"];
+    if (!polar_node.empty()) {
+        mapping->use_polar = (int)polar_node != 0;
+        printf("✓ 极坐标显示: %s\n", mapping->use_polar ? "开启" : "关闭");
+    } else {
+        mapping->use_polar = true;  // 默认开启
+        printf("⚠️ 未找到极坐标开关，默认开启\n");
+    }
+
     // 不再需要相机内参和畸变系数，直接设置为空
     mapping->camera_matrix = cv::Mat();
     mapping->dist_coeffs = cv::Mat();
@@ -220,6 +251,26 @@ static int load_camera_calibration(const char* calib_file, camera_mapping_t* map
 
     mapping->is_initialized = true;
     return 0;
+}
+
+// 笛卡尔坐标转极坐标（带原点偏移）
+static polar_coordinate_t cartesian_to_polar(cv::Point2f cartesian_point, const camera_mapping_t* mapping) {
+    polar_coordinate_t polar;
+    
+    // 应用原点偏移
+    double x = cartesian_point.x - mapping->origin_offset.x;
+    double y = cartesian_point.y - mapping->origin_offset.y;
+    
+    // 计算极坐标
+    polar.r = sqrt(x * x + y * y);           // 半径（距离）
+    polar.theta = atan2(y, x);               // 角度（弧度，-π到π）
+    
+    return polar;
+}
+
+// 将弧度转换为角度
+static double radians_to_degrees(double radians) {
+    return radians * 180.0 / M_PI;
 }
 
 // 转换图像坐标到真实世界坐标
@@ -268,13 +319,24 @@ static void draw_pose_results(cv::Mat& img, object_detect_result_list* results,
         // 绘制ROI地面定位点（紫色圆点）
         cv::circle(img, roi_bottom_center, 4, cv::Scalar(255, 0, 255), -1);
         
-        // 如果有坐标映射，显示ROI的真实世界坐标
+        // 如果有坐标映射，显示ROI的真实世界坐标（笛卡尔+极坐标）
         if (mapping->is_initialized) {
             cv::Point2f roi_world_point = image_to_world_coordinate(roi_bottom_center, mapping);
-            char roi_coord_str[60];
-            snprintf(roi_coord_str, sizeof(roi_coord_str), "ROI:(%.0f,%.0f)mm", roi_world_point.x, roi_world_point.y);
-            cv::putText(img, roi_coord_str, cv::Point((int)roi_bottom_center.x - 40, (int)roi_bottom_center.y + 20), 
+            
+            // 笛卡尔坐标显示
+            char roi_cartesian_str[60];
+            snprintf(roi_cartesian_str, sizeof(roi_cartesian_str), "ROI:(%.0f,%.0f)mm", roi_world_point.x, roi_world_point.y);
+            cv::putText(img, roi_cartesian_str, cv::Point((int)roi_bottom_center.x - 40, (int)roi_bottom_center.y + 20), 
                       cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 0, 255), 1);
+            
+            // 极坐标显示
+            if (mapping->use_polar) {
+                polar_coordinate_t roi_polar = cartesian_to_polar(roi_world_point, mapping);
+                char roi_polar_str[60];
+                snprintf(roi_polar_str, sizeof(roi_polar_str), "Polar:(%.0fmm,%.1f°)", roi_polar.r, radians_to_degrees(roi_polar.theta));
+                cv::putText(img, roi_polar_str, cv::Point((int)roi_bottom_center.x - 40, (int)roi_bottom_center.y + 35), 
+                          cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 100, 255), 1);
+            }
         }
         
         // post_process已经对关键点进行了坐标反算，直接使用即可
@@ -284,13 +346,24 @@ static void draw_pose_results(cv::Mat& img, object_detect_result_list* results,
             if (result->keypoints[j][2] > 0.5) {
                 cv::circle(img, cv::Point((int)result->keypoints[j][0], (int)result->keypoints[j][1]), 3, cv::Scalar(0, 255, 0), -1);
                 
-                // 如果有坐标映射，显示真实世界坐标
+                // 如果有坐标映射，显示真实世界坐标（笛卡尔+极坐标）
                 if (mapping->is_initialized && j == 15) { // 左脚踝作为参考点
                     cv::Point2f world_point = image_to_world_coordinate(cv::Point2f(result->keypoints[j][0], result->keypoints[j][1]), mapping);
-                    char coord_str[50];
-                    snprintf(coord_str, sizeof(coord_str), "(%.1f,%.1f)", world_point.x, world_point.y);
-                    cv::putText(img, coord_str, cv::Point((int)result->keypoints[j][0], (int)result->keypoints[j][1]-10), 
+                    
+                    // 笛卡尔坐标显示
+                    char cartesian_str[50];
+                    snprintf(cartesian_str, sizeof(cartesian_str), "(%.1f,%.1f)", world_point.x, world_point.y);
+                    cv::putText(img, cartesian_str, cv::Point((int)result->keypoints[j][0], (int)result->keypoints[j][1]-10), 
                               cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 255, 0), 1);
+                    
+                    // 极坐标显示
+                    if (mapping->use_polar) {
+                        polar_coordinate_t polar = cartesian_to_polar(world_point, mapping);
+                        char polar_str[50];
+                        snprintf(polar_str, sizeof(polar_str), "(%.0fmm,%.1f°)", polar.r, radians_to_degrees(polar.theta));
+                        cv::putText(img, polar_str, cv::Point((int)result->keypoints[j][0], (int)result->keypoints[j][1]-25), 
+                                  cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(100, 255, 255), 1);
+                    }
                 }
             }
         }
@@ -443,8 +516,8 @@ int main(int argc, char **argv) {
     }
     
     // 设置摄像头参数
-    cap.set(cv::CAP_PROP_FRAME_WIDTH, 1920);
-    cap.set(cv::CAP_PROP_FRAME_HEIGHT, 1080);
+    cap.set(cv::CAP_PROP_FRAME_WIDTH, 1280);
+    cap.set(cv::CAP_PROP_FRAME_HEIGHT, 720);
     cap.set(cv::CAP_PROP_FPS, 30);
     cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
     
@@ -538,7 +611,13 @@ int main(int argc, char **argv) {
             
             if (g_camera_mapping.is_initialized) {
                 cv::Point2f world_coord = image_to_world_coordinate(roi_center, &g_camera_mapping);
-                printf(", 世界坐标:(%.0f,%.0f)mm", world_coord.x, world_coord.y);
+                printf(", 笛卡尔:(%.0f,%.0f)mm", world_coord.x, world_coord.y);
+                
+                // 如果启用极坐标，同时显示极坐标
+                if (g_camera_mapping.use_polar) {
+                    polar_coordinate_t polar_coord = cartesian_to_polar(world_coord, &g_camera_mapping);
+                    printf(", 极坐标:(%.0fmm,%.1f°)", polar_coord.r, radians_to_degrees(polar_coord.theta));
+                }
             }
             printf("\n");
         }

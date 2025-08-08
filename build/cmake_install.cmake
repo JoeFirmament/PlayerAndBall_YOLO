@@ -1,4 +1,4 @@
-# Install script for directory: /home/radxa/Qworkspace/yolov8_post_basketball
+# Install script for directory: /home/orangepi/Qworkspace/yolov8_pose_basketball
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -49,12 +49,12 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
          FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/./yolov8_pose_basketball"
          RPATH "$ORIGIN/libs")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/." TYPE EXECUTABLE FILES "/home/radxa/Qworkspace/yolov8_post_basketball/build/yolov8_pose_basketball")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/." TYPE EXECUTABLE FILES "/home/orangepi/Qworkspace/yolov8_pose_basketball/build/yolov8_pose_basketball")
   if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/./yolov8_pose_basketball" AND
      NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/./yolov8_pose_basketball")
     file(RPATH_CHANGE
          FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/./yolov8_pose_basketball"
-         OLD_RPATH "/home/radxa/Qworkspace/yolov8_post_basketball/libs:"
+         OLD_RPATH "/home/orangepi/Qworkspace/yolov8_pose_basketball/libs:/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/rknpu2/Linux/aarch64:"
          NEW_RPATH "$ORIGIN/libs")
     if(CMAKE_INSTALL_DO_STRIP)
       execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/./yolov8_pose_basketball")
@@ -64,8 +64,8 @@ endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/./models" TYPE FILE FILES
-    "/home/radxa/Qworkspace/yolov8_post_basketball/models/yolov8_pose.rknn"
-    "/home/radxa/Qworkspace/yolov8_post_basketball/models/basketball_player_rk3588.rknn"
+    "/home/orangepi/Qworkspace/yolov8_pose_basketball/models/yolov8_pose.rknn"
+    "/home/orangepi/Qworkspace/yolov8_pose_basketball/models/basketball_player_rk3588.rknn"
     )
 endif()
 
@@ -77,5 +77,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/radxa/Qworkspace/yolov8_post_basketball/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/orangepi/Qworkspace/yolov8_pose_basketball/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

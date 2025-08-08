@@ -1,5 +1,5 @@
 CMakeFiles/yolov8_pose_basketball.dir/src/lapjv.cpp.o: \
- /home/radxa/Qworkspace/yolov8_post_basketball/src/lapjv.cpp \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/src/lapjv.cpp \
  /usr/include/stdc-predef.h /usr/include/stdio.h \
  /usr/include/aarch64-linux-gnu/bits/libc-header-start.h \
  /usr/include/features.h /usr/include/features-time64.h \
@@ -57,4 +57,4 @@ CMakeFiles/yolov8_pose_basketball.dir/src/lapjv.cpp.o: \
  /usr/include/alloca.h /usr/include/aarch64-linux-gnu/bits/stdlib-float.h \
  /usr/include/c++/12/bits/std_abs.h /usr/include/string.h \
  /usr/include/strings.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/include/lapjv.h
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/include/lapjv.h

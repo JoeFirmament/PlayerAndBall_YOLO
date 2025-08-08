@@ -6,6 +6,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 使用CMake构建系统，支持RK3588平台的双摄像头独立检测架构：
 
+## ⚠️ 重要：RKNN库版本兼容性问题
+
+**关键问题说明：**
+本项目使用的RKNN模型是 **Version 6 格式**，需要匹配的RKNN Runtime库版本。系统可能安装了旧版本的RKNN库，会导致以下错误：
+
+```bash
+❌ 常见错误：
+E RKNN: Invalid RKNN model version 6
+E RKNN: rknn_init, load model failed!
+```
+
+**解决方案：**
+项目已内置正确版本的RKNN Runtime库，CMake会自动配置使用项目内库而非系统库。
+
+**技术细节：**
+- 系统库: `/lib/librknnrt.so` (3.5MB, 旧版本, 只支持V1-5)
+- 项目库: `detector_lib/lib/librknnrt.so` (7.4MB, 新版本, 支持V6+)
+- 项目库: `libs/librknnrt.so` (7.4MB, 新版本, 支持V6+)
+
+**编译时自动处理：**
+CMake会自动：
+1. 查找项目内RKNN库
+2. 设置RPATH确保运行时使用项目库
+3. 避免系统库版本冲突
+
 ## 快速启动脚本 (推荐)
 
 ```bash
@@ -249,8 +274,34 @@ sudo usermod -a -G video $USER
   - 如需更改分辨率，必须重新进行Homography标定
 
 ### 常见问题排查
+
+#### 1. RKNN版本兼容性问题 ⚠️ 最常见
+**错误现象:**
+```bash
+E RKNN: Invalid RKNN model version 6
+E RKNN: rknn_init, load model failed!
+```
+
+**诊断步骤:**
+```bash
+# 1. 检查系统RKNN库版本
+ls -la /lib/librknnrt.so*
+# 旧版库约3.5MB，新版库约7.4MB
+
+# 2. 检查程序链接的库
+ldd ./your_program | grep rknn
+
+# 3. 检查RPATH设置
+readelf -d ./your_program | grep -E "RPATH|RUNPATH"
+```
+
+**解决方法:**
+- ✅ **推荐**: 使用项目编译系统，会自动处理版本问题
+- ⚠️ **手动**: 替换系统RKNN库 (需要sudo权限)
+
+#### 2. 其他常见问题
 - **NPU权限**: 需要root权限或加入video用户组
-- **模型版本**: 确保使用RK3588对应的.rknn模型
+- **模型版本**: 确保使用RK3588对应的.rknn模型 
 - **内存不足**: 检查NPU内存分配，调整队列大小
 - **摄像头兼容性**: 验证V4L2设备支持MJPEG格式
 - **设备路径**: 使用 `ls /dev/v4l/by-id/` 检查USB摄像头设备路径

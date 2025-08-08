@@ -21,8 +21,8 @@
 #include <mutex>               // 用于互斥锁
 #include <condition_variable>  // 用于条件变量
 #include <opencv2/opencv.hpp>
-#include "yolov8-pose.h"
-#include "basketball_postprocess.h"
+#include "pose_yolov8.h"
+#include "rim_basketball_postprocess.h"
 #include "image_utils.h"
 #include "file_utils.h"
 #include "image_drawing.h"
@@ -31,7 +31,7 @@
 #include "im2d_type.h"
 #include "im2d_single.h"
 #include "RgaUtils.h"
-#include "letterbox_utils.h"
+#include "pose_letterbox_utils.h"
 
 int skeleton[38] ={16, 14, 14, 12, 17, 15, 15, 13, 12, 13, 6, 12, 7, 13, 6, 7, 6, 8, 
             7, 9, 8, 10, 9, 11, 2, 3, 1, 2, 1, 3, 2, 4, 3, 5, 4, 6, 5, 7}; 

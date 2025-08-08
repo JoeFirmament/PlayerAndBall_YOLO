@@ -1,5 +1,5 @@
 CMakeFiles/yolov8_pose_basketball.dir/src/main_camera_optimized.cc.o: \
- /home/radxa/Qworkspace/yolov8_post_basketball/src/main_camera_optimized.cc \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/src/main_camera_optimized.cc \
  /usr/include/stdc-predef.h \
  /usr/lib/gcc/aarch64-linux-gnu/12/include/stdint.h /usr/include/stdint.h \
  /usr/include/aarch64-linux-gnu/bits/libc-header-start.h \
@@ -375,18 +375,19 @@ CMakeFiles/yolov8_pose_basketball.dir/src/main_camera_optimized.cc.o: \
  /usr/include/opencv4/opencv2/video.hpp \
  /usr/include/opencv4/opencv2/video/tracking.hpp \
  /usr/include/opencv4/opencv2/video/background_segm.hpp \
- /home/radxa/Qworkspace/yolov8_post_basketball/include/yolov8-pose.h \
- /usr/include/rknn_api.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/utils/common.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/include/postprocess.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/utils/image_utils.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/utils/common.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/utils/file_utils.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/utils/image_drawing.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/include/BYTETracker.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/include/STrack.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/include/kalmanFilter.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/include/dataType.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/include/pose_yolov8.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/rknpu2/include/rknn_api.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/utils/common.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/include/pose_postprocess.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/utils/image_utils.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/utils/common.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/include/rim_basketball_postprocess.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/utils/file_utils.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/utils/image_drawing.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/include/BYTETracker.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/include/STrack.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/include/kalmanFilter.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/include/dataType.h \
  /usr/include/eigen3/Eigen/Core \
  /usr/include/eigen3/Eigen/src/Core/util/DisableStupidWarnings.h \
  /usr/include/eigen3/Eigen/src/Core/util/Macros.h \
@@ -577,15 +578,16 @@ CMakeFiles/yolov8_pose_basketball.dir/src/main_camera_optimized.cc.o: \
  /usr/include/eigen3/Eigen/src/Eigenvalues/GeneralizedEigenSolver.h \
  /usr/include/eigen3/Eigen/src/Eigenvalues/./RealQZ.h \
  /usr/include/eigen3/Eigen/src/Eigenvalues/MatrixBaseEigenvalues.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/librga/include/im2d.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/librga/include/im2d_version.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/librga/include/im2d_type.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/librga/include/rga.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/librga/include/im2d_common.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/librga/include/im2d_buffer.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/librga/include/im2d_single.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/librga/include/im2d_task.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/librga/include/im2d_mpi.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/librga/include/im2d_type.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/librga/include/im2d_single.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/librga/include/RgaUtils.h
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/librga/include/im2d.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/librga/include/im2d_version.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/librga/include/im2d_type.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/librga/include/rga.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/librga/include/im2d_common.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/librga/include/im2d_buffer.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/librga/include/im2d_single.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/librga/include/im2d_task.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/librga/include/im2d_mpi.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/librga/include/im2d_type.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/librga/include/im2d_single.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/librga/include/RgaUtils.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/src/pose_letterbox_utils.h

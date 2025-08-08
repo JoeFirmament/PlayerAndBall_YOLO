@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/radxa/Qworkspace/yolov8_post_basketball
+CMAKE_SOURCE_DIR = /home/orangepi/Qworkspace/yolov8_pose_basketball
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/radxa/Qworkspace/yolov8_post_basketball/build
+CMAKE_BINARY_DIR = /home/orangepi/Qworkspace/yolov8_pose_basketball/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -132,9 +132,9 @@ install/strip/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/Qworkspace/yolov8_post_basketball/build/CMakeFiles /home/radxa/Qworkspace/yolov8_post_basketball/build//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/orangepi/Qworkspace/yolov8_pose_basketball/build/CMakeFiles /home/orangepi/Qworkspace/yolov8_pose_basketball/build//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/Qworkspace/yolov8_post_basketball/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/orangepi/Qworkspace/yolov8_pose_basketball/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -174,12 +174,66 @@ yolov8_pose_basketball/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/build
 .PHONY : yolov8_pose_basketball/fast
 
+#=============================================================================
+# Target rules for targets named yolov8_pose_only
+
+# Build rule for target.
+yolov8_pose_only: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 yolov8_pose_only
+.PHONY : yolov8_pose_only
+
+# fast build rule for target.
+yolov8_pose_only/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/build
+.PHONY : yolov8_pose_only/fast
+
+#=============================================================================
+# Target rules for targets named rim_basketball_detector_v2
+
+# Build rule for target.
+rim_basketball_detector_v2: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 rim_basketball_detector_v2
+.PHONY : rim_basketball_detector_v2
+
+# fast build rule for target.
+rim_basketball_detector_v2/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_v2.dir/build.make CMakeFiles/rim_basketball_detector_v2.dir/build
+.PHONY : rim_basketball_detector_v2/fast
+
+#=============================================================================
+# Target rules for targets named rim_basketball_detector_simple
+
+# Build rule for target.
+rim_basketball_detector_simple: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 rim_basketball_detector_simple
+.PHONY : rim_basketball_detector_simple
+
+# fast build rule for target.
+rim_basketball_detector_simple/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_simple.dir/build.make CMakeFiles/rim_basketball_detector_simple.dir/build
+.PHONY : rim_basketball_detector_simple/fast
+
+#=============================================================================
+# Target rules for targets named dual_camera_detector
+
+# Build rule for target.
+dual_camera_detector: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 dual_camera_detector
+.PHONY : dual_camera_detector
+
+# fast build rule for target.
+dual_camera_detector/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/build
+.PHONY : dual_camera_detector/fast
+
 src/BYTETracker.o: src/BYTETracker.cpp.o
 .PHONY : src/BYTETracker.o
 
 # target to build an object file
 src/BYTETracker.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/BYTETracker.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/BYTETracker.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/BYTETracker.cpp.o
 .PHONY : src/BYTETracker.cpp.o
 
 src/BYTETracker.i: src/BYTETracker.cpp.i
@@ -188,6 +242,8 @@ src/BYTETracker.i: src/BYTETracker.cpp.i
 # target to preprocess a source file
 src/BYTETracker.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/BYTETracker.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/BYTETracker.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/BYTETracker.cpp.i
 .PHONY : src/BYTETracker.cpp.i
 
 src/BYTETracker.s: src/BYTETracker.cpp.s
@@ -196,6 +252,8 @@ src/BYTETracker.s: src/BYTETracker.cpp.s
 # target to generate assembly for a file
 src/BYTETracker.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/BYTETracker.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/BYTETracker.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/BYTETracker.cpp.s
 .PHONY : src/BYTETracker.cpp.s
 
 src/STrack.o: src/STrack.cpp.o
@@ -204,6 +262,8 @@ src/STrack.o: src/STrack.cpp.o
 # target to build an object file
 src/STrack.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/STrack.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/STrack.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/STrack.cpp.o
 .PHONY : src/STrack.cpp.o
 
 src/STrack.i: src/STrack.cpp.i
@@ -212,6 +272,8 @@ src/STrack.i: src/STrack.cpp.i
 # target to preprocess a source file
 src/STrack.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/STrack.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/STrack.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/STrack.cpp.i
 .PHONY : src/STrack.cpp.i
 
 src/STrack.s: src/STrack.cpp.s
@@ -220,7 +282,33 @@ src/STrack.s: src/STrack.cpp.s
 # target to generate assembly for a file
 src/STrack.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/STrack.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/STrack.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/STrack.cpp.s
 .PHONY : src/STrack.cpp.s
+
+src/dual_camera_detector.o: src/dual_camera_detector.cc.o
+.PHONY : src/dual_camera_detector.o
+
+# target to build an object file
+src/dual_camera_detector.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/dual_camera_detector.cc.o
+.PHONY : src/dual_camera_detector.cc.o
+
+src/dual_camera_detector.i: src/dual_camera_detector.cc.i
+.PHONY : src/dual_camera_detector.i
+
+# target to preprocess a source file
+src/dual_camera_detector.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/dual_camera_detector.cc.i
+.PHONY : src/dual_camera_detector.cc.i
+
+src/dual_camera_detector.s: src/dual_camera_detector.cc.s
+.PHONY : src/dual_camera_detector.s
+
+# target to generate assembly for a file
+src/dual_camera_detector.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/dual_camera_detector.cc.s
+.PHONY : src/dual_camera_detector.cc.s
 
 src/kalmanFilter.o: src/kalmanFilter.cpp.o
 .PHONY : src/kalmanFilter.o
@@ -228,6 +316,8 @@ src/kalmanFilter.o: src/kalmanFilter.cpp.o
 # target to build an object file
 src/kalmanFilter.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/kalmanFilter.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/kalmanFilter.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/kalmanFilter.cpp.o
 .PHONY : src/kalmanFilter.cpp.o
 
 src/kalmanFilter.i: src/kalmanFilter.cpp.i
@@ -236,6 +326,8 @@ src/kalmanFilter.i: src/kalmanFilter.cpp.i
 # target to preprocess a source file
 src/kalmanFilter.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/kalmanFilter.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/kalmanFilter.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/kalmanFilter.cpp.i
 .PHONY : src/kalmanFilter.cpp.i
 
 src/kalmanFilter.s: src/kalmanFilter.cpp.s
@@ -244,6 +336,8 @@ src/kalmanFilter.s: src/kalmanFilter.cpp.s
 # target to generate assembly for a file
 src/kalmanFilter.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/kalmanFilter.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/kalmanFilter.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/kalmanFilter.cpp.s
 .PHONY : src/kalmanFilter.cpp.s
 
 src/lapjv.o: src/lapjv.cpp.o
@@ -252,6 +346,8 @@ src/lapjv.o: src/lapjv.cpp.o
 # target to build an object file
 src/lapjv.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/lapjv.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/lapjv.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/lapjv.cpp.o
 .PHONY : src/lapjv.cpp.o
 
 src/lapjv.i: src/lapjv.cpp.i
@@ -260,6 +356,8 @@ src/lapjv.i: src/lapjv.cpp.i
 # target to preprocess a source file
 src/lapjv.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/lapjv.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/lapjv.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/lapjv.cpp.i
 .PHONY : src/lapjv.cpp.i
 
 src/lapjv.s: src/lapjv.cpp.s
@@ -268,6 +366,8 @@ src/lapjv.s: src/lapjv.cpp.s
 # target to generate assembly for a file
 src/lapjv.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/lapjv.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/lapjv.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/lapjv.cpp.s
 .PHONY : src/lapjv.cpp.s
 
 src/main_camera_optimized.o: src/main_camera_optimized.cc.o
@@ -294,29 +394,176 @@ src/main_camera_optimized.cc.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/main_camera_optimized.cc.s
 .PHONY : src/main_camera_optimized.cc.s
 
-src/postprocess.o: src/postprocess.cc.o
-.PHONY : src/postprocess.o
+src/pose_letterbox_utils.o: src/pose_letterbox_utils.cc.o
+.PHONY : src/pose_letterbox_utils.o
 
 # target to build an object file
-src/postprocess.cc.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/postprocess.cc.o
-.PHONY : src/postprocess.cc.o
+src/pose_letterbox_utils.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/pose_letterbox_utils.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/pose_letterbox_utils.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/pose_letterbox_utils.cc.o
+.PHONY : src/pose_letterbox_utils.cc.o
 
-src/postprocess.i: src/postprocess.cc.i
-.PHONY : src/postprocess.i
+src/pose_letterbox_utils.i: src/pose_letterbox_utils.cc.i
+.PHONY : src/pose_letterbox_utils.i
 
 # target to preprocess a source file
-src/postprocess.cc.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/postprocess.cc.i
-.PHONY : src/postprocess.cc.i
+src/pose_letterbox_utils.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/pose_letterbox_utils.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/pose_letterbox_utils.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/pose_letterbox_utils.cc.i
+.PHONY : src/pose_letterbox_utils.cc.i
 
-src/postprocess.s: src/postprocess.cc.s
-.PHONY : src/postprocess.s
+src/pose_letterbox_utils.s: src/pose_letterbox_utils.cc.s
+.PHONY : src/pose_letterbox_utils.s
 
 # target to generate assembly for a file
-src/postprocess.cc.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/postprocess.cc.s
-.PHONY : src/postprocess.cc.s
+src/pose_letterbox_utils.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/pose_letterbox_utils.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/pose_letterbox_utils.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/pose_letterbox_utils.cc.s
+.PHONY : src/pose_letterbox_utils.cc.s
+
+src/pose_main.o: src/pose_main.cc.o
+.PHONY : src/pose_main.o
+
+# target to build an object file
+src/pose_main.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/pose_main.cc.o
+.PHONY : src/pose_main.cc.o
+
+src/pose_main.i: src/pose_main.cc.i
+.PHONY : src/pose_main.i
+
+# target to preprocess a source file
+src/pose_main.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/pose_main.cc.i
+.PHONY : src/pose_main.cc.i
+
+src/pose_main.s: src/pose_main.cc.s
+.PHONY : src/pose_main.s
+
+# target to generate assembly for a file
+src/pose_main.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/pose_main.cc.s
+.PHONY : src/pose_main.cc.s
+
+src/pose_postprocess.o: src/pose_postprocess.cc.o
+.PHONY : src/pose_postprocess.o
+
+# target to build an object file
+src/pose_postprocess.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/pose_postprocess.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/pose_postprocess.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/pose_postprocess.cc.o
+.PHONY : src/pose_postprocess.cc.o
+
+src/pose_postprocess.i: src/pose_postprocess.cc.i
+.PHONY : src/pose_postprocess.i
+
+# target to preprocess a source file
+src/pose_postprocess.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/pose_postprocess.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/pose_postprocess.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/pose_postprocess.cc.i
+.PHONY : src/pose_postprocess.cc.i
+
+src/pose_postprocess.s: src/pose_postprocess.cc.s
+.PHONY : src/pose_postprocess.s
+
+# target to generate assembly for a file
+src/pose_postprocess.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/pose_postprocess.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/pose_postprocess.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/pose_postprocess.cc.s
+.PHONY : src/pose_postprocess.cc.s
+
+src/pose_yolov8.o: src/pose_yolov8.cc.o
+.PHONY : src/pose_yolov8.o
+
+# target to build an object file
+src/pose_yolov8.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/pose_yolov8.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/pose_yolov8.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/pose_yolov8.cc.o
+.PHONY : src/pose_yolov8.cc.o
+
+src/pose_yolov8.i: src/pose_yolov8.cc.i
+.PHONY : src/pose_yolov8.i
+
+# target to preprocess a source file
+src/pose_yolov8.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/pose_yolov8.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/pose_yolov8.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/pose_yolov8.cc.i
+.PHONY : src/pose_yolov8.cc.i
+
+src/pose_yolov8.s: src/pose_yolov8.cc.s
+.PHONY : src/pose_yolov8.s
+
+# target to generate assembly for a file
+src/pose_yolov8.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/pose_yolov8.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/pose_yolov8.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/pose_yolov8.cc.s
+.PHONY : src/pose_yolov8.cc.s
+
+src/rim_basketball_detector_updated.o: src/rim_basketball_detector_updated.cc.o
+.PHONY : src/rim_basketball_detector_updated.o
+
+# target to build an object file
+src/rim_basketball_detector_updated.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_v2.dir/build.make CMakeFiles/rim_basketball_detector_v2.dir/src/rim_basketball_detector_updated.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_simple.dir/build.make CMakeFiles/rim_basketball_detector_simple.dir/src/rim_basketball_detector_updated.cc.o
+.PHONY : src/rim_basketball_detector_updated.cc.o
+
+src/rim_basketball_detector_updated.i: src/rim_basketball_detector_updated.cc.i
+.PHONY : src/rim_basketball_detector_updated.i
+
+# target to preprocess a source file
+src/rim_basketball_detector_updated.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_v2.dir/build.make CMakeFiles/rim_basketball_detector_v2.dir/src/rim_basketball_detector_updated.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_simple.dir/build.make CMakeFiles/rim_basketball_detector_simple.dir/src/rim_basketball_detector_updated.cc.i
+.PHONY : src/rim_basketball_detector_updated.cc.i
+
+src/rim_basketball_detector_updated.s: src/rim_basketball_detector_updated.cc.s
+.PHONY : src/rim_basketball_detector_updated.s
+
+# target to generate assembly for a file
+src/rim_basketball_detector_updated.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_v2.dir/build.make CMakeFiles/rim_basketball_detector_v2.dir/src/rim_basketball_detector_updated.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_simple.dir/build.make CMakeFiles/rim_basketball_detector_simple.dir/src/rim_basketball_detector_updated.cc.s
+.PHONY : src/rim_basketball_detector_updated.cc.s
+
+src/rim_basketball_postprocess_simple.o: src/rim_basketball_postprocess_simple.cpp.o
+.PHONY : src/rim_basketball_postprocess_simple.o
+
+# target to build an object file
+src/rim_basketball_postprocess_simple.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_v2.dir/build.make CMakeFiles/rim_basketball_detector_v2.dir/src/rim_basketball_postprocess_simple.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_simple.dir/build.make CMakeFiles/rim_basketball_detector_simple.dir/src/rim_basketball_postprocess_simple.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/rim_basketball_postprocess_simple.cpp.o
+.PHONY : src/rim_basketball_postprocess_simple.cpp.o
+
+src/rim_basketball_postprocess_simple.i: src/rim_basketball_postprocess_simple.cpp.i
+.PHONY : src/rim_basketball_postprocess_simple.i
+
+# target to preprocess a source file
+src/rim_basketball_postprocess_simple.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_v2.dir/build.make CMakeFiles/rim_basketball_detector_v2.dir/src/rim_basketball_postprocess_simple.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_simple.dir/build.make CMakeFiles/rim_basketball_detector_simple.dir/src/rim_basketball_postprocess_simple.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/rim_basketball_postprocess_simple.cpp.i
+.PHONY : src/rim_basketball_postprocess_simple.cpp.i
+
+src/rim_basketball_postprocess_simple.s: src/rim_basketball_postprocess_simple.cpp.s
+.PHONY : src/rim_basketball_postprocess_simple.s
+
+# target to generate assembly for a file
+src/rim_basketball_postprocess_simple.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_v2.dir/build.make CMakeFiles/rim_basketball_detector_v2.dir/src/rim_basketball_postprocess_simple.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_simple.dir/build.make CMakeFiles/rim_basketball_detector_simple.dir/src/rim_basketball_postprocess_simple.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/rim_basketball_postprocess_simple.cpp.s
+.PHONY : src/rim_basketball_postprocess_simple.cpp.s
 
 src/utils.o: src/utils.cpp.o
 .PHONY : src/utils.o
@@ -324,6 +571,8 @@ src/utils.o: src/utils.cpp.o
 # target to build an object file
 src/utils.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/utils.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/utils.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/utils.cpp.o
 .PHONY : src/utils.cpp.o
 
 src/utils.i: src/utils.cpp.i
@@ -332,6 +581,8 @@ src/utils.i: src/utils.cpp.i
 # target to preprocess a source file
 src/utils.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/utils.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/utils.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/utils.cpp.i
 .PHONY : src/utils.cpp.i
 
 src/utils.s: src/utils.cpp.s
@@ -340,31 +591,9 @@ src/utils.s: src/utils.cpp.s
 # target to generate assembly for a file
 src/utils.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/utils.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/src/utils.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/src/utils.cpp.s
 .PHONY : src/utils.cpp.s
-
-src/yolov8-pose.o: src/yolov8-pose.cc.o
-.PHONY : src/yolov8-pose.o
-
-# target to build an object file
-src/yolov8-pose.cc.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/yolov8-pose.cc.o
-.PHONY : src/yolov8-pose.cc.o
-
-src/yolov8-pose.i: src/yolov8-pose.cc.i
-.PHONY : src/yolov8-pose.i
-
-# target to preprocess a source file
-src/yolov8-pose.cc.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/yolov8-pose.cc.i
-.PHONY : src/yolov8-pose.cc.i
-
-src/yolov8-pose.s: src/yolov8-pose.cc.s
-.PHONY : src/yolov8-pose.s
-
-# target to generate assembly for a file
-src/yolov8-pose.cc.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/src/yolov8-pose.cc.s
-.PHONY : src/yolov8-pose.cc.s
 
 utils/file_utils.o: utils/file_utils.c.o
 .PHONY : utils/file_utils.o
@@ -372,6 +601,10 @@ utils/file_utils.o: utils/file_utils.c.o
 # target to build an object file
 utils/file_utils.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/utils/file_utils.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/utils/file_utils.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_v2.dir/build.make CMakeFiles/rim_basketball_detector_v2.dir/utils/file_utils.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_simple.dir/build.make CMakeFiles/rim_basketball_detector_simple.dir/utils/file_utils.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/utils/file_utils.c.o
 .PHONY : utils/file_utils.c.o
 
 utils/file_utils.i: utils/file_utils.c.i
@@ -380,6 +613,10 @@ utils/file_utils.i: utils/file_utils.c.i
 # target to preprocess a source file
 utils/file_utils.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/utils/file_utils.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/utils/file_utils.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_v2.dir/build.make CMakeFiles/rim_basketball_detector_v2.dir/utils/file_utils.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_simple.dir/build.make CMakeFiles/rim_basketball_detector_simple.dir/utils/file_utils.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/utils/file_utils.c.i
 .PHONY : utils/file_utils.c.i
 
 utils/file_utils.s: utils/file_utils.c.s
@@ -388,6 +625,10 @@ utils/file_utils.s: utils/file_utils.c.s
 # target to generate assembly for a file
 utils/file_utils.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/utils/file_utils.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/utils/file_utils.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_v2.dir/build.make CMakeFiles/rim_basketball_detector_v2.dir/utils/file_utils.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_simple.dir/build.make CMakeFiles/rim_basketball_detector_simple.dir/utils/file_utils.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/utils/file_utils.c.s
 .PHONY : utils/file_utils.c.s
 
 utils/image_drawing.o: utils/image_drawing.c.o
@@ -396,6 +637,8 @@ utils/image_drawing.o: utils/image_drawing.c.o
 # target to build an object file
 utils/image_drawing.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/utils/image_drawing.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/utils/image_drawing.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/utils/image_drawing.c.o
 .PHONY : utils/image_drawing.c.o
 
 utils/image_drawing.i: utils/image_drawing.c.i
@@ -404,6 +647,8 @@ utils/image_drawing.i: utils/image_drawing.c.i
 # target to preprocess a source file
 utils/image_drawing.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/utils/image_drawing.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/utils/image_drawing.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/utils/image_drawing.c.i
 .PHONY : utils/image_drawing.c.i
 
 utils/image_drawing.s: utils/image_drawing.c.s
@@ -412,6 +657,8 @@ utils/image_drawing.s: utils/image_drawing.c.s
 # target to generate assembly for a file
 utils/image_drawing.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/utils/image_drawing.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/utils/image_drawing.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/utils/image_drawing.c.s
 .PHONY : utils/image_drawing.c.s
 
 utils/image_utils.o: utils/image_utils.c.o
@@ -420,6 +667,10 @@ utils/image_utils.o: utils/image_utils.c.o
 # target to build an object file
 utils/image_utils.c.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/utils/image_utils.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/utils/image_utils.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_v2.dir/build.make CMakeFiles/rim_basketball_detector_v2.dir/utils/image_utils.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_simple.dir/build.make CMakeFiles/rim_basketball_detector_simple.dir/utils/image_utils.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/utils/image_utils.c.o
 .PHONY : utils/image_utils.c.o
 
 utils/image_utils.i: utils/image_utils.c.i
@@ -428,6 +679,10 @@ utils/image_utils.i: utils/image_utils.c.i
 # target to preprocess a source file
 utils/image_utils.c.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/utils/image_utils.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/utils/image_utils.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_v2.dir/build.make CMakeFiles/rim_basketball_detector_v2.dir/utils/image_utils.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_simple.dir/build.make CMakeFiles/rim_basketball_detector_simple.dir/utils/image_utils.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/utils/image_utils.c.i
 .PHONY : utils/image_utils.c.i
 
 utils/image_utils.s: utils/image_utils.c.s
@@ -436,6 +691,10 @@ utils/image_utils.s: utils/image_utils.c.s
 # target to generate assembly for a file
 utils/image_utils.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_basketball.dir/build.make CMakeFiles/yolov8_pose_basketball.dir/utils/image_utils.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/yolov8_pose_only.dir/build.make CMakeFiles/yolov8_pose_only.dir/utils/image_utils.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_v2.dir/build.make CMakeFiles/rim_basketball_detector_v2.dir/utils/image_utils.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rim_basketball_detector_simple.dir/build.make CMakeFiles/rim_basketball_detector_simple.dir/utils/image_utils.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dual_camera_detector.dir/build.make CMakeFiles/dual_camera_detector.dir/utils/image_utils.c.s
 .PHONY : utils/image_utils.c.s
 
 # Help Target
@@ -450,13 +709,20 @@ help:
 	@echo "... install/strip"
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
+	@echo "... dual_camera_detector"
+	@echo "... rim_basketball_detector_simple"
+	@echo "... rim_basketball_detector_v2"
 	@echo "... yolov8_pose_basketball"
+	@echo "... yolov8_pose_only"
 	@echo "... src/BYTETracker.o"
 	@echo "... src/BYTETracker.i"
 	@echo "... src/BYTETracker.s"
 	@echo "... src/STrack.o"
 	@echo "... src/STrack.i"
 	@echo "... src/STrack.s"
+	@echo "... src/dual_camera_detector.o"
+	@echo "... src/dual_camera_detector.i"
+	@echo "... src/dual_camera_detector.s"
 	@echo "... src/kalmanFilter.o"
 	@echo "... src/kalmanFilter.i"
 	@echo "... src/kalmanFilter.s"
@@ -466,15 +732,27 @@ help:
 	@echo "... src/main_camera_optimized.o"
 	@echo "... src/main_camera_optimized.i"
 	@echo "... src/main_camera_optimized.s"
-	@echo "... src/postprocess.o"
-	@echo "... src/postprocess.i"
-	@echo "... src/postprocess.s"
+	@echo "... src/pose_letterbox_utils.o"
+	@echo "... src/pose_letterbox_utils.i"
+	@echo "... src/pose_letterbox_utils.s"
+	@echo "... src/pose_main.o"
+	@echo "... src/pose_main.i"
+	@echo "... src/pose_main.s"
+	@echo "... src/pose_postprocess.o"
+	@echo "... src/pose_postprocess.i"
+	@echo "... src/pose_postprocess.s"
+	@echo "... src/pose_yolov8.o"
+	@echo "... src/pose_yolov8.i"
+	@echo "... src/pose_yolov8.s"
+	@echo "... src/rim_basketball_detector_updated.o"
+	@echo "... src/rim_basketball_detector_updated.i"
+	@echo "... src/rim_basketball_detector_updated.s"
+	@echo "... src/rim_basketball_postprocess_simple.o"
+	@echo "... src/rim_basketball_postprocess_simple.i"
+	@echo "... src/rim_basketball_postprocess_simple.s"
 	@echo "... src/utils.o"
 	@echo "... src/utils.i"
 	@echo "... src/utils.s"
-	@echo "... src/yolov8-pose.o"
-	@echo "... src/yolov8-pose.i"
-	@echo "... src/yolov8-pose.s"
 	@echo "... utils/file_utils.o"
 	@echo "... utils/file_utils.i"
 	@echo "... utils/file_utils.s"

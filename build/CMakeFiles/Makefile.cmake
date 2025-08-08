@@ -7,7 +7,7 @@ set(CMAKE_DEPENDS_GENERATOR "Unix Makefiles")
 # The top level Makefile was generated from the following files:
 set(CMAKE_MAKEFILE_DEPENDS
   "CMakeCache.txt"
-  "/home/radxa/Qworkspace/yolov8_post_basketball/CMakeLists.txt"
+  "/home/orangepi/Qworkspace/yolov8_pose_basketball/CMakeLists.txt"
   "CMakeFiles/3.25.1/CMakeCCompiler.cmake"
   "CMakeFiles/3.25.1/CMakeCXXCompiler.cmake"
   "CMakeFiles/3.25.1/CMakeSystem.cmake"
@@ -50,4 +50,8 @@ set(CMAKE_MAKEFILE_PRODUCTS
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/yolov8_pose_basketball.dir/DependInfo.cmake"
+  "CMakeFiles/yolov8_pose_only.dir/DependInfo.cmake"
+  "CMakeFiles/rim_basketball_detector_v2.dir/DependInfo.cmake"
+  "CMakeFiles/rim_basketball_detector_simple.dir/DependInfo.cmake"
+  "CMakeFiles/dual_camera_detector.dir/DependInfo.cmake"
   )

@@ -1,8 +1,8 @@
 CMakeFiles/yolov8_pose_basketball.dir/src/utils.cpp.o: \
- /home/radxa/Qworkspace/yolov8_post_basketball/src/utils.cpp \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/src/utils.cpp \
  /usr/include/stdc-predef.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/include/BYTETracker.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/include/STrack.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/include/BYTETracker.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/include/STrack.h \
  /usr/include/opencv4/opencv2/opencv.hpp \
  /usr/include/opencv4/opencv2/opencv_modules.hpp \
  /usr/include/opencv4/opencv2/core.hpp \
@@ -331,8 +331,8 @@ CMakeFiles/yolov8_pose_basketball.dir/src/utils.cpp.o: \
  /usr/include/opencv4/opencv2/video.hpp \
  /usr/include/opencv4/opencv2/video/tracking.hpp \
  /usr/include/opencv4/opencv2/video/background_segm.hpp \
- /home/radxa/Qworkspace/yolov8_post_basketball/include/kalmanFilter.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/include/dataType.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/include/kalmanFilter.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/include/dataType.h \
  /usr/include/eigen3/Eigen/Core \
  /usr/include/eigen3/Eigen/src/Core/util/DisableStupidWarnings.h \
  /usr/include/eigen3/Eigen/src/Core/util/Macros.h \
@@ -523,4 +523,4 @@ CMakeFiles/yolov8_pose_basketball.dir/src/utils.cpp.o: \
  /usr/include/eigen3/Eigen/src/Eigenvalues/GeneralizedEigenSolver.h \
  /usr/include/eigen3/Eigen/src/Eigenvalues/./RealQZ.h \
  /usr/include/eigen3/Eigen/src/Eigenvalues/MatrixBaseEigenvalues.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/include/lapjv.h
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/include/lapjv.h

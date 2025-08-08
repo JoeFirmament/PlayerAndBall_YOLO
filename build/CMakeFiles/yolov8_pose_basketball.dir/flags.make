@@ -5,13 +5,13 @@
 # compile CXX with /usr/bin/c++
 C_DEFINES = 
 
-C_INCLUDES = -I/home/radxa/Qworkspace/yolov8_post_basketball/include -I/home/radxa/Qworkspace/yolov8_post_basketball/utils -I/home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/fp16 -I/home/radxa/Qworkspace/yolov8_post_basketball/3rdparty -I/home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/stb_image -I/home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/jpeg_turbo -I/home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/jpeg_turbo/include -I/home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/jpeg_turbo/Linux/aarch64 -I/usr/include/eigen3 -I/home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/librga/include -isystem /usr/include/opencv4
+C_INCLUDES = -I/home/orangepi/Qworkspace/yolov8_pose_basketball/include -I/home/orangepi/Qworkspace/yolov8_pose_basketball/utils -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/fp16 -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/stb_image -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/jpeg_turbo -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/jpeg_turbo/include -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/jpeg_turbo/Linux/aarch64 -I/usr/include/eigen3 -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/librga/include -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/rknpu2/include -isystem /usr/include/opencv4
 
 C_FLAGS = 
 
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/radxa/Qworkspace/yolov8_post_basketball/include -I/home/radxa/Qworkspace/yolov8_post_basketball/utils -I/home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/fp16 -I/home/radxa/Qworkspace/yolov8_post_basketball/3rdparty -I/home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/stb_image -I/home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/jpeg_turbo -I/home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/jpeg_turbo/include -I/home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/jpeg_turbo/Linux/aarch64 -I/usr/include/eigen3 -I/home/radxa/Qworkspace/yolov8_post_basketball/3rdparty/librga/include -isystem /usr/include/opencv4
+CXX_INCLUDES = -I/home/orangepi/Qworkspace/yolov8_pose_basketball/include -I/home/orangepi/Qworkspace/yolov8_pose_basketball/utils -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/fp16 -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/stb_image -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/jpeg_turbo -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/jpeg_turbo/include -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/jpeg_turbo/Linux/aarch64 -I/usr/include/eigen3 -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/librga/include -I/home/orangepi/Qworkspace/yolov8_pose_basketball/3rdparty/rknpu2/include -isystem /usr/include/opencv4
 
 CXX_FLAGS = -std=gnu++11
 

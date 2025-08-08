@@ -7,6 +7,9 @@
 POSE_MODEL="models/Q_yolov8_pose.rknn"
 CALIB_FILE="data/2025_7_11pm.json"
 
+# USB摄像头设备路径 (持久化路径，插拔后不会改变)
+CAMERA_PATH="/dev/v4l/by-id/usb-Generic_USB_Camera_200901010001-video-index0"
+
 # 脚本目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="$SCRIPT_DIR/build"
@@ -16,6 +19,7 @@ echo "        纯姿态检测系统 v1.0"
 echo "========================================"
 echo "姿态模型: $POSE_MODEL"
 echo "标定文件: $CALIB_FILE"
+echo "摄像头路径: $CAMERA_PATH"
 echo "按键控制:"
 echo "  [ESC] - 退出程序"
 echo "  [T]   - 切换ByteTrack跟踪开关"
@@ -51,10 +55,28 @@ sudo chmod 666 /dev/dri/renderD* 2>/dev/null || true
 # 运行程序
 cd "$BUILD_DIR" || exit 1
 
+# 检查USB摄像头设备是否存在
+if [ -e "$CAMERA_PATH" ]; then
+    echo "✓ USB摄像头设备存在: $CAMERA_PATH"
+    CAMERA_ARG="$CAMERA_PATH"
+else
+    echo "⚠️  USB摄像头设备不存在: $CAMERA_PATH"
+    echo "    程序将使用默认摄像头"
+    CAMERA_ARG=""
+fi
+
 if [ -n "$CALIB_FILE" ]; then
     echo "启动姿态检测系统 (带标定)..."
-    exec ./yolov8_pose_only "../$POSE_MODEL" "../$CALIB_FILE"
+    if [ -n "$CAMERA_ARG" ]; then
+        exec ./yolov8_pose_only "../$POSE_MODEL" "../$CALIB_FILE" "$CAMERA_ARG"
+    else
+        exec ./yolov8_pose_only "../$POSE_MODEL" "../$CALIB_FILE"
+    fi
 else
     echo "启动姿态检测系统 (无标定)..."
-    exec ./yolov8_pose_only "../$POSE_MODEL"
+    if [ -n "$CAMERA_ARG" ]; then
+        exec ./yolov8_pose_only "../$POSE_MODEL" "" "$CAMERA_ARG"
+    else
+        exec ./yolov8_pose_only "../$POSE_MODEL"
+    fi
 fi

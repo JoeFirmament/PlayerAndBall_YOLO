@@ -1,8 +1,8 @@
 CMakeFiles/yolov8_pose_basketball.dir/src/kalmanFilter.cpp.o: \
- /home/radxa/Qworkspace/yolov8_post_basketball/src/kalmanFilter.cpp \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/src/kalmanFilter.cpp \
  /usr/include/stdc-predef.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/include/kalmanFilter.h \
- /home/radxa/Qworkspace/yolov8_post_basketball/include/dataType.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/include/kalmanFilter.h \
+ /home/orangepi/Qworkspace/yolov8_pose_basketball/include/dataType.h \
  /usr/include/c++/12/cstddef \
  /usr/include/aarch64-linux-gnu/c++/12/bits/c++config.h \
  /usr/include/aarch64-linux-gnu/c++/12/bits/os_defines.h \
