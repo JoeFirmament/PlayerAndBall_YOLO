@@ -37,8 +37,9 @@ static const char* class_names[2] = {"basketball", "rim"};
 // RimBasketballDetectorLib内部实现类
 class RimBasketballDetectorLib::Impl {
 public:
-    explicit Impl(const std::string& model_path)
+    explicit Impl(const std::string& model_path, int npu_core)
         : model_path_(model_path)
+        , npu_core_(npu_core)
         , status_(DETECTOR_UNINITIALIZED)
         , conf_threshold_(0.25f)
         , nms_threshold_(0.1f)
@@ -115,6 +116,7 @@ public:
 private:
     // 配置参数
     std::string model_path_;
+    int npu_core_;  // NPU核心选择
     DetectorStatus status_;
     float conf_threshold_;
     float nms_threshold_;
@@ -136,6 +138,7 @@ private:
         status_ = DETECTOR_INITIALIZING;
         
         // 1. 初始化RKNN模型
+        rknn_ctx_.assigned_npu_core = npu_core_;  // 设置NPU核心选择
         if (!rknn_ctx_.init_from_file(model_path_)) {
             status_ = DETECTOR_ERROR;
             return false;
@@ -495,8 +498,8 @@ private:
 };
 
 // RimBasketballDetectorLib公共接口实现
-RimBasketballDetectorLib::RimBasketballDetectorLib(const std::string& model_path)
-    : pImpl_(std::make_unique<Impl>(model_path)) {
+RimBasketballDetectorLib::RimBasketballDetectorLib(const std::string& model_path, int npu_core)
+    : pImpl_(std::make_unique<Impl>(model_path, npu_core)) {
 }
 
 RimBasketballDetectorLib::~RimBasketballDetectorLib() = default;

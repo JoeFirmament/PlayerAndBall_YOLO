@@ -3,6 +3,12 @@
 # 示例程序源文件
 set(EXAMPLE_SOURCES
     test_detector_lib.cpp
+    test_npu_allocation.cpp
+    dual_camera_with_npu.cpp
+    test_dual_image_npu.cpp
+    test_dual_camera_simulation.cpp
+    test_memory_isolation.cpp
+    test_npu_scheduling.cpp
     pose_image.cpp
     pose_image_with_homography.cpp
     pose_image_with_polar.cpp

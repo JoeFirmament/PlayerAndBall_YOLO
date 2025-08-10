@@ -4,7 +4,7 @@
 namespace detector {
 
 // 库版本信息实现
-const char* LibraryInfo::VERSION = "1.0.0";
+const char* LibraryInfo::VERSION = "1.0.4";
 const char* LibraryInfo::BUILD_DATE = __DATE__ " " __TIME__;
 const char* LibraryInfo::PLATFORM = "RK3588";
 const char* LibraryInfo::DESCRIPTION = "YOLOv8 Detection Library for RK3588 NPU";

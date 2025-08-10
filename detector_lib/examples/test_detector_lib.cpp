@@ -195,8 +195,9 @@ void test_concurrent_detection() {
         std::string pose_model_path = find_model_file("Q_yolov8_pose.rknn");
         std::string rim_model_path = find_model_file("Q_Rim_Basketball_724_JZ.rknn");
         
-        detector::PoseDetectorLib pose_detector(pose_model_path);
-        detector::RimBasketballDetectorLib rim_detector(rim_model_path);
+        // 为避免NPU资源冲突，分配不同的NPU核心
+        detector::PoseDetectorLib pose_detector(pose_model_path, 0);  // 使用NPU核心0
+        detector::RimBasketballDetectorLib rim_detector(rim_model_path, 1);  // 使用NPU核心1
         
         cv::Mat test_frame = cv::Mat::zeros(480, 640, CV_8UC3);
         

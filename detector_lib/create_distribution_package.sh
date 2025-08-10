@@ -7,7 +7,7 @@ set -e
 
 # 配置变量
 PACKAGE_NAME="detector_lib_package"
-PACKAGE_VERSION="1.0.3"
+PACKAGE_VERSION="1.0.4"
 BUILD_DIR="build"
 DIST_DIR="dist"
 
@@ -22,7 +22,7 @@ fi
 
 # 检查必要文件
 required_files=(
-    "$BUILD_DIR/libdetector_lib.so.1.0.3"
+    "$BUILD_DIR/libdetector_lib.so.1.0.4"
     "$BUILD_DIR/libdetector_lib.so"
     "$BUILD_DIR/libdetector_lib.a"
     "include/detector_lib.h"
@@ -42,7 +42,7 @@ mkdir -p "$DIST_DIR/$PACKAGE_NAME"/{lib,include,models,examples,scripts,data,img
 
 # 复制库文件
 echo "📚 复制库文件..."
-cp "$BUILD_DIR/libdetector_lib.so.1.0.3" "$DIST_DIR/$PACKAGE_NAME/lib/"
+cp "$BUILD_DIR/libdetector_lib.so.1.0.4" "$DIST_DIR/$PACKAGE_NAME/lib/"
 cp "$BUILD_DIR/libdetector_lib.so.1" "$DIST_DIR/$PACKAGE_NAME/lib/"
 cp "$BUILD_DIR/libdetector_lib.so" "$DIST_DIR/$PACKAGE_NAME/lib/"
 cp "$BUILD_DIR/libdetector_lib.a" "$DIST_DIR/$PACKAGE_NAME/lib/"

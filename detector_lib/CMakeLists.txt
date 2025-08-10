@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(DetectorLib VERSION 1.0.3 LANGUAGES C CXX)
+project(DetectorLib VERSION 1.0.4 LANGUAGES C CXX)
 
 # 设置C++标准
 set(CMAKE_CXX_STANDARD 17)

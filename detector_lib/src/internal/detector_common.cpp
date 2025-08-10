@@ -47,6 +47,23 @@ bool RknnContext::init_from_file(const std::string& model_path) {
         return false;
     }
     
+    // 如果指定了NPU核心，设置核心掩码
+    if (assigned_npu_core >= 0 && assigned_npu_core <= 2) {
+        rknn_core_mask core_mask = RKNN_NPU_CORE_AUTO;
+        switch (assigned_npu_core) {
+            case 0: core_mask = RKNN_NPU_CORE_0; break;
+            case 1: core_mask = RKNN_NPU_CORE_1; break;
+            case 2: core_mask = RKNN_NPU_CORE_2; break;
+        }
+        
+        ret = rknn_set_core_mask(ctx, core_mask);
+        if (ret < 0) {
+            printf("⚠️ 警告: 无法设置NPU核心%d (错误码: %d)，将使用自动分配\n", assigned_npu_core, ret);
+        } else {
+            printf("✅ 已设置使用NPU核心%d\n", assigned_npu_core);
+        }
+    }
+    
     
     
     // 获取输入输出信息

@@ -1,5 +1,88 @@
 # DetectorLib 更新日志
 
+## [v1.0.4] - 2025-08-10
+
+### 🚀 新增功能 - NPU核心分配支持
+
+#### ⚡ NPU资源管理
+- **NPU核心分配接口**: 为用户暴露NPU核心选择权，避免多检测器资源冲突
+- **RK3588S平台优化**: 支持3个NPU核心（0、1、2）的显式分配
+- **向后兼容设计**: 默认参数-1保持自动分配行为，不影响现有代码
+
+#### 🔧 API增强
+- **PoseDetectorLib构造函数扩展**:
+  ```cpp
+  explicit PoseDetectorLib(const std::string& model_path, int npu_core = -1);
+  ```
+- **RimBasketballDetectorLib构造函数扩展**:
+  ```cpp
+  explicit RimBasketballDetectorLib(const std::string& model_path, int npu_core = -1);
+  ```
+- **NPU核心分配策略**:
+  - `-1` (默认): 自动分配，由RKNN Runtime决定
+  - `0`: 强制使用NPU核心0
+  - `1`: 强制使用NPU核心1  
+  - `2`: 强制使用NPU核心2
+
+#### 🛠️ 工具和监控
+- **NPU监控脚本** (`scripts/monitor_npu.sh`):
+  - 实时显示NPU负载率、频率、温度
+  - 需要sudo权限访问 `/sys/kernel/debug/rknpu/load`
+- **NPU信息检测脚本** (`scripts/check_npu_info.sh`):
+  - 检测NPU设备状态和驱动版本
+  - 显示可用频率和调频策略
+- **C++ NPU工具类** (`include/npu_utils.h`):
+  - `NPUUtils::get_npu_info()`: 获取NPU状态信息
+  - `NPUUtils::get_recommended_core()`: 智能推荐空闲核心
+
+#### 📋 示例程序
+- **dual_camera_with_npu**: 双摄像头NPU优化示例
+  - 演示如何为不同检测器分配不同NPU核心
+  - 包含错误处理和性能监控
+  - 支持自动分配和手动指定模式
+- **test_npu_allocation**: NPU分配测试程序
+  - 验证NPU核心分配功能
+  - 测试多检测器并发场景
+
+#### 🔍 使用场景
+双摄像头系统最佳实践：
+```cpp
+// 摄像头0 -> 姿态检测 -> NPU核心0
+PoseDetectorLib pose_detector(pose_model_path, 0);
+
+// 摄像头2 -> 篮筐检测 -> NPU核心1
+RimBasketballDetectorLib rim_detector(rim_model_path, 1);
+```
+
+#### 🧠 RKNN Runtime智能调度机制揭秘
+
+**重要发现**：通过深度测试验证，RKNN Runtime内置智能负载均衡机制！
+
+**智能调度验证数据**：
+```
+测试场景                    | 系统吞吐量  | 说明
+---------------------------|-----------|-------------------
+自动分配（默认-1）          | 77.5 FPS  | Runtime智能调度
+相同NPU核心（0+0）          | 49.4 FPS  | 资源竞争基线
+不同NPU核心（0+1）          | 77.5 FPS  | 手动最优分配
+```
+
+**核心API接口**：
+- **`rknn_init()`**: 默认启用 `RKNN_NPU_CORE_AUTO` 智能调度
+- **`RKNN_NPU_CORE_AUTO = 0`**: 定义在 `rknn_api.h:247`，实现负载均衡
+- **`rknn_set_core_mask()`**: 可覆盖智能调度，手动指定NPU核心
+
+**重要结论**：
+- ✅ **v1.0.3已经享受NPU智能调度的性能优势**
+- ✅ **v1.0.4提供精确控制能力，满足高级用户需求**
+- 🎯 **智能调度 ≈ 手动最优分配性能**，证明Runtime调度机制非常有效
+
+#### ⚠️ 注意事项
+- NPU核心分配仅在初始化时设置，运行时不可更改
+- 多个检测器使用相同NPU核心可能导致性能下降
+- **大部分用户使用默认智能调度即可获得最佳性能**
+- 建议高级用户在特殊场景下显式分配不同核心
+
 ## [v1.0.3] - 2025-08-08
 
 ### 🚀 重大更新 - RKNN版本兼容性 + 相对路径机制

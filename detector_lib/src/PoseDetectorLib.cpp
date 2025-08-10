@@ -44,8 +44,9 @@ namespace detector {
 // PoseDetectorLib内部实现类
 class PoseDetectorLib::Impl {
 public:
-    explicit Impl(const std::string& model_path)
+    explicit Impl(const std::string& model_path, int npu_core)
         : model_path_(model_path)
+        , npu_core_(npu_core)
         , status_(DETECTOR_UNINITIALIZED)
         , tracking_enabled_(false)
         , conf_threshold_(0.1f)
@@ -294,6 +295,7 @@ public:
 private:
     // 配置参数
     std::string model_path_;
+    int npu_core_;  // NPU核心选择
     DetectorStatus status_;
     bool tracking_enabled_;
     float conf_threshold_;
@@ -329,6 +331,7 @@ private:
         status_ = DETECTOR_INITIALIZING;
         
         // 1. 初始化RKNN模型
+        rknn_ctx_.assigned_npu_core = npu_core_;  // 设置NPU核心选择
         if (!rknn_ctx_.init_from_file(model_path_)) {
             status_ = DETECTOR_ERROR;
             return false;
@@ -1160,8 +1163,8 @@ private:
 };
 
 // PoseDetectorLib公共接口实现
-PoseDetectorLib::PoseDetectorLib(const std::string& model_path)
-    : pImpl_(std::make_unique<Impl>(model_path)) {
+PoseDetectorLib::PoseDetectorLib(const std::string& model_path, int npu_core)
+    : pImpl_(std::make_unique<Impl>(model_path, npu_core)) {
 }
 
 PoseDetectorLib::~PoseDetectorLib() = default;

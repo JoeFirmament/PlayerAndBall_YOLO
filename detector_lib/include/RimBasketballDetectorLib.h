@@ -19,9 +19,11 @@ public:
     /**
      * @brief 构造函数
      * @param model_path RKNN模型文件路径 (绝对路径或相对路径)
+     * @param npu_core NPU核心选择 (0/1/2=指定核心, -1=自动选择, 默认-1)
      * @note 构造函数只保存参数，不进行资源初始化，不会抛出异常
+     * @note RK3588S有3个NPU核心，建议不同detector使用不同核心
      */
-    explicit RimBasketballDetectorLib(const std::string& model_path);
+    explicit RimBasketballDetectorLib(const std::string& model_path, int npu_core = -1);
     
     /**
      * @brief 析构函数

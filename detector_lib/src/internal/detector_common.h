@@ -66,6 +66,7 @@ struct RknnContext {
     int model_channel = 0;
     bool is_initialized = false;
     bool is_quant = false;  // 添加量化标志
+    int assigned_npu_core = -1;  // 记录分配的NPU核心 (-1=auto, 0=core0, 1=core1)
     
     ~RknnContext();
     bool init_from_file(const std::string& model_path);
