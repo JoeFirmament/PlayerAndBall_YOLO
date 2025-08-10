@@ -38,7 +38,7 @@ done
 # 创建分发目录结构
 echo "📁 创建分发包目录结构..."
 rm -rf "$DIST_DIR"
-mkdir -p "$DIST_DIR/$PACKAGE_NAME"/{lib,include,models,examples,scripts}
+mkdir -p "$DIST_DIR/$PACKAGE_NAME"/{lib,include,models,examples,scripts,data,imgs,docs}
 
 # 复制库文件
 echo "📚 复制库文件..."
@@ -58,6 +58,8 @@ cp include/RimBasketballDetectorLib.h "$DIST_DIR/$PACKAGE_NAME/include/"
 cp include/detector_common_types.h "$DIST_DIR/$PACKAGE_NAME/include/" 2>/dev/null || true
 cp include/detector_file_utils.h "$DIST_DIR/$PACKAGE_NAME/include/" 2>/dev/null || true
 cp include/detector_path_utils.h "$DIST_DIR/$PACKAGE_NAME/include/" 2>/dev/null || true
+cp include/detector_rim_basketball_postprocess.h "$DIST_DIR/$PACKAGE_NAME/include/" 2>/dev/null || true
+cp include/rknn_api.h "$DIST_DIR/$PACKAGE_NAME/include/" 2>/dev/null || true
 
 # 复制模型文件（如果存在）
 echo "🤖 复制模型文件..."
@@ -68,12 +70,66 @@ fi
 # 复制示例程序
 echo "💡 复制示例程序..."
 if [ -d "$BUILD_DIR/examples" ]; then
-    cp "$BUILD_DIR/examples/pose_image" "$DIST_DIR/$PACKAGE_NAME/examples/" 2>/dev/null || true
-    cp "$BUILD_DIR/examples/pose_image_with_polar" "$DIST_DIR/$PACKAGE_NAME/examples/" 2>/dev/null || true
-    cp "$BUILD_DIR/examples/pose_image_with_homography" "$DIST_DIR/$PACKAGE_NAME/examples/" 2>/dev/null || true
-    cp "$BUILD_DIR/examples/rim_basketball_image" "$DIST_DIR/$PACKAGE_NAME/examples/" 2>/dev/null || true
-    cp "$BUILD_DIR/examples/pose_camera_bytetrack_homography" "$DIST_DIR/$PACKAGE_NAME/examples/" 2>/dev/null || true
+    # 复制所有可执行文件
+    find "$BUILD_DIR/examples" -type f -executable -exec cp {} "$DIST_DIR/$PACKAGE_NAME/examples/" \; 2>/dev/null || true
+    echo "✅ 已复制 $(ls -1 "$DIST_DIR/$PACKAGE_NAME/examples/" | grep -E '^[^.]*$' | wc -l) 个示例程序"
 fi
+
+# 复制示例源代码
+echo "📝 复制示例源代码..."
+if [ -d "examples" ]; then
+    cp examples/*.cpp "$DIST_DIR/$PACKAGE_NAME/examples/" 2>/dev/null || echo "⚠️  警告: 没有找到示例源代码文件"
+    # 使用独立编译版本的CMakeLists.txt
+    if [ -f "examples/CMakeLists_standalone.txt" ]; then
+        cp examples/CMakeLists_standalone.txt "$DIST_DIR/$PACKAGE_NAME/examples/CMakeLists.txt"
+        echo "✅ 已复制独立编译版CMakeLists.txt"
+    else
+        cp examples/CMakeLists.txt "$DIST_DIR/$PACKAGE_NAME/examples/" 2>/dev/null || echo "⚠️  警告: 没有找到CMakeLists.txt"
+    fi
+    echo "✅ 已复制示例源代码文件"
+else
+    echo "⚠️  警告: 没有找到examples目录"
+fi
+
+# 复制配置数据文件
+echo "⚙️ 复制配置数据文件..."
+if [ -d "data" ]; then
+    cp data/*.json "$DIST_DIR/$PACKAGE_NAME/data/" 2>/dev/null || echo "⚠️  警告: 没有找到配置数据文件"
+    echo "✅ 已复制配置数据文件（Homography标定数据等）"
+else
+    echo "⚠️  警告: 没有找到data目录"
+fi
+
+# 复制测试图片
+echo "🖼️ 复制测试图片..."
+if [ -d "imgs" ]; then
+    cp imgs/* "$DIST_DIR/$PACKAGE_NAME/imgs/" 2>/dev/null || echo "⚠️  警告: 没有找到测试图片"
+    echo "✅ 已复制测试图片"
+else
+    echo "⚠️  警告: 没有找到imgs目录"
+fi
+
+# 复制工具脚本
+echo "🔧 复制工具脚本..."
+if [ -d "scripts" ]; then
+    cp scripts/* "$DIST_DIR/$PACKAGE_NAME/scripts/" 2>/dev/null || echo "⚠️  警告: 没有找到工具脚本"
+    echo "✅ 已复制工具脚本"
+else
+    echo "⚠️  警告: 没有找到scripts目录"
+fi
+
+# 复制完整文档
+echo "📚 复制完整技术文档..."
+if [ -d "docs" ]; then
+    cp docs/* "$DIST_DIR/$PACKAGE_NAME/docs/" 2>/dev/null || echo "⚠️  警告: 没有找到docs目录"
+    echo "✅ 已复制完整技术文档"
+else
+    echo "⚠️  警告: 没有找到docs目录"
+fi
+
+# 复制构建脚本
+echo "🏗️ 复制构建脚本..."
+cp build_and_install.sh "$DIST_DIR/$PACKAGE_NAME/" 2>/dev/null || echo "⚠️  警告: 未找到build_and_install.sh"
 
 # 复制运行时依赖（RKNN Runtime）
 echo "🧩 复制运行时依赖 (RKNN Runtime)..."
@@ -146,7 +202,7 @@ Name: DetectorLib
 Description: YOLOv8 Pose and Basketball Detection Library for RK3588
 Version: ${PACKAGE_VERSION}
 Requires: opencv4
-Libs: -L\${libdir} -ldetector_lib -lrknn_api -lpthread
+Libs: -L\${libdir} -ldetector_lib -lrknnrt -lpthread
 Cflags: -I\${includedir}
 EOF
 
@@ -182,13 +238,20 @@ fi
 # 安装库文件
 echo "📚 安装库文件到 /usr/local/lib..."
 cp lib/* /usr/local/lib/
-chmod 755 /usr/local/lib/libdetector_lib.so.1.0.0
+chmod 755 /usr/local/lib/libdetector_lib.so.1.0.3
+chmod 755 /usr/local/lib/libdetector_lib.so.1
+chmod 755 /usr/local/lib/libdetector_lib.so
 chmod 644 /usr/local/lib/libdetector_lib.a
+# 设置RKNN Runtime库权限
+if [ -f "/usr/local/lib/librknnrt.so" ]; then
+    chmod 755 /usr/local/lib/librknnrt.so
+    echo "✅ RKNN Runtime库权限设置完成"
+fi
 
 # 安装头文件
 echo "📄 安装头文件到 /usr/local/include..."
 cp include/* /usr/local/include/
-chmod 644 /usr/local/include/detector_lib.h
+chmod 644 /usr/local/include/*.h
 
 # 安装模型文件
 echo "🤖 安装模型文件到 /usr/local/share/detector_lib..."
@@ -254,10 +317,19 @@ fi
 echo "📚 删除库文件..."
 rm -f /usr/local/lib/libdetector_lib.so*
 rm -f /usr/local/lib/libdetector_lib.a
+rm -f /usr/local/lib/librknnrt.so
 
 # 删除头文件
 echo "📄 删除头文件..."
 rm -f /usr/local/include/detector_lib.h
+rm -f /usr/local/include/detector_types.h
+rm -f /usr/local/include/PoseDetectorLib.h
+rm -f /usr/local/include/RimBasketballDetectorLib.h
+rm -f /usr/local/include/detector_common_types.h
+rm -f /usr/local/include/detector_file_utils.h
+rm -f /usr/local/include/detector_path_utils.h
+rm -f /usr/local/include/detector_rim_basketball_postprocess.h
+rm -f /usr/local/include/rknn_api.h
 
 # 删除模型文件
 echo "🤖 删除模型文件..."
@@ -276,11 +348,11 @@ EOF
 
 chmod +x "$DIST_DIR/$PACKAGE_NAME/uninstall.sh"
 
-# 复制文档
-echo "📖 复制文档..."
+# 复制主要文档到根目录（用户方便查看）
+echo "📖 复制主要文档到根目录..."
 cp README.md "$DIST_DIR/$PACKAGE_NAME/" 2>/dev/null || echo "⚠️  警告: 未找到README.md"
-cp USER_GUIDE.md "$DIST_DIR/$PACKAGE_NAME/" 2>/dev/null || echo "⚠️  警告: 未找到USER_GUIDE.md"
-cp PLATFORM_LOG.md "$DIST_DIR/$PACKAGE_NAME/" 2>/dev/null || true
+cp CHANGELOG.md "$DIST_DIR/$PACKAGE_NAME/" 2>/dev/null || echo "⚠️  警告: 未找到CHANGELOG.md"
+# 注意：完整的技术文档已经在docs/目录中
 
 # 创建简单的README
 cat > "$DIST_DIR/$PACKAGE_NAME/README_QUICK.md" << EOF
@@ -340,12 +412,18 @@ echo "  目录: $DIST_DIR/$PACKAGE_NAME/"
 echo "  压缩包: $DIST_DIR/${PACKAGE_NAME}_v${PACKAGE_VERSION}_$(date +%Y%m%d).tar.gz"
 echo ""
 echo "📋 包含内容:"
-echo "  📚 库文件: lib/libdetector_lib.so*, lib/libdetector_lib.a"
-echo "  📄 头文件: include/detector_lib.h"
-echo "  🤖 模型文件: models/*.rknn (如果存在)"
-echo "  💡 示例程序: examples/"
+echo "  📚 库文件: lib/libdetector_lib.so*, lib/libdetector_lib.a, lib/librknnrt.so"
+echo "  📄 头文件: include/ (9个头文件)"
+echo "  🤖 模型文件: models/*.rknn (姿态检测+篮筐篮球检测)"
+echo "  💡 示例程序: examples/ (13个预编译程序 + 源代码)"
+echo "  📝 示例源码: examples/*.cpp (开发者参考代码)"
+echo "  ⚙️  配置数据: data/ (Homography标定文件等)"
+echo "  🖼️ 测试图片: imgs/ (pose.jpg, rim.jpg)"
+echo "  🔧 工具脚本: scripts/ (运行脚本等)"
+echo "  📚 完整文档: docs/ (7个技术文档)"
+echo "  🏗️ 构建脚本: build_and_install.sh"
 echo "  🔧 安装脚本: install.sh, uninstall.sh"
-echo "  📖 文档: README.md, USER_GUIDE.md"
+echo "  📖 主文档: README.md, CHANGELOG.md"
 echo "  ⚙️  配置: scripts/detector_lib.pc"
 echo ""
 echo "📨 给用户的使用说明:"

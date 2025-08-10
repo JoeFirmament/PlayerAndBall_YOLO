@@ -96,7 +96,6 @@ char** read_lines_from_file(const char* filename, int* line_count)
     }
 
     int num_lines = count_lines(file);
-    printf("num_lines=%d\n", num_lines);
     char** lines = (char**)malloc(num_lines * sizeof(char*));
     memset(lines, 0, num_lines * sizeof(char*));
 

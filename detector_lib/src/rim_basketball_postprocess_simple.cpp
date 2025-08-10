@@ -149,13 +149,7 @@ static int postprocess_6_outputs_basketball_rim(rknn_output* outputs, rknn_tenso
                         float raw_score = deqnt_affine_to_f32(cls_data[cls_idx], cls_zp, cls_scale);
                         float conf = sigmoid(raw_score);
                         
-                        // 调试：显示量化后的数值分布
-                        static int sample_count = 0;
-                        if (sample_count < 10 && layer == 0 && h < 3 && w < 3) {
-                            printf("量化调试[%d]: 网格[%d,%d] 类别%d raw_int8=%d, thres_i8=%d, raw_float=%.4f, sigmoid=%.4f\n", 
-                                   sample_count, h, w, c, cls_data[cls_idx], thres_i8, raw_score, conf);
-                            sample_count++;
-                        }
+                        
                         
                         if (conf > max_conf) {
                             max_conf = conf;

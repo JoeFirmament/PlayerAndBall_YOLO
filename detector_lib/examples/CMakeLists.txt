@@ -7,6 +7,7 @@ set(EXAMPLE_SOURCES
     pose_image_with_homography.cpp
     pose_image_with_polar.cpp
     rim_basketball_image.cpp
+    rim_basketball_camera.cpp
     pose_camera_bytetrack_homography.cpp
 )
 
@@ -47,6 +48,24 @@ foreach(example_src ${EXAMPLE_SOURCES})
         message(STATUS "Created example: ${target_name}")
     endif()
 endforeach()
+
+# 为开发环境创建符号链接，统一路径约定
+# 这样开发环境和分发包环境使用相同的路径结构
+set(BUILD_EXAMPLES_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+
+# 创建符号链接：从 build/examples 到项目根目录资源
+add_custom_target(create_dev_symlinks ALL
+    COMMENT "Creating symbolic links for unified path convention"
+    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+        "${CMAKE_CURRENT_SOURCE_DIR}/../models" 
+        "${BUILD_EXAMPLES_DIR}/../models"
+    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+        "${CMAKE_CURRENT_SOURCE_DIR}/../imgs" 
+        "${BUILD_EXAMPLES_DIR}/../imgs"
+    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+        "${CMAKE_CURRENT_SOURCE_DIR}/../data" 
+        "${BUILD_EXAMPLES_DIR}/../data"
+)
 
 # 安装示例程序 (可选)
 option(INSTALL_EXAMPLES "Install example programs" OFF)

@@ -1,8 +1,0 @@
-build/
-*.o
-*.a
-*.so
-*_result.jpg
-*.log
-.vscode/
-.idea/
