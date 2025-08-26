@@ -1,0 +1,88 @@
+{
+    "height_detection": {
+        "enabled": true,
+        "measurement": {
+            "min_keypoint_confidence": 0.5,
+            "head_offset_pixels": 30,
+            "height_correction_factor": 1.05,
+            "min_roi_height_pixels": 100,
+            "max_roi_height_pixels": 800
+        },
+        "filtering": {
+            "type": "median",
+            "window_size": 10,
+            "min_stable_frames": 5,
+            "outlier_threshold_sigma": 3.0,
+            "stability_threshold_mm": 50.0,
+            "kalman_process_noise": 0.01,
+            "kalman_measurement_noise": 10.0
+        },
+        "temporal": {
+            "measurement_window_frames": 20,
+            "min_confidence": 0.6,
+            "max_measurement_gap_ms": 500
+        }
+    },
+    
+    "ball_request_detection": {
+        "enabled": true,
+        "gesture": {
+            "min_keypoint_confidence": 0.5,
+            "max_hands_distance_mm": 400,
+            "chest_region_scale": 1.5,
+            "min_hand_height_ratio": 0.3,
+            "max_hand_height_ratio": 0.7
+        },
+        "temporal": {
+            "min_continuous_frames": 3,
+            "max_interruption_frames": 2,
+            "min_total_confidence": 2.0,
+            "cooldown_frames": 8,
+            "gesture_stability_threshold": 0.3,
+            "detection_window_frames": 15
+        },
+        "filtering": {
+            "smooth_confidence": true,
+            "confidence_smoothing_alpha": 0.7,
+            "position_smoothing_alpha": 0.8
+        }
+    },
+    
+    "id_management": {
+        "enabled": true,
+        "priority": {
+            "confidence_weight": 0.3,
+            "duration_weight": 0.4,
+            "stability_weight": 0.3,
+            "decay_rate": 0.95
+        },
+        "temporal": {
+            "min_request_frames_for_swap": 10,
+            "swap_cooldown_ms": 1500,
+            "max_pending_swaps": 3,
+            "priority_update_interval_ms": 100
+        },
+        "rules": {
+            "allow_multiple_requesters": false,
+            "preserve_original_order": true,
+            "max_tracked_persons": 8
+        }
+    },
+    
+    "filtering_global": {
+        "enable_temporal_smoothing": true,
+        "enable_outlier_rejection": true,
+        "enable_predictive_tracking": false,
+        "frame_buffer_size": 30,
+        "time_window_ms": 2000
+    },
+    
+    "debug": {
+        "show_filter_states": false,
+        "show_temporal_buffers": false,
+        "show_state_machines": false,
+        "log_measurements": false,
+        "save_debug_video": false,
+        "debug_output_path": "./test_debug/"
+    }
+}
