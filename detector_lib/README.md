@@ -641,6 +641,49 @@ cd detector_lib
 
 本项目遵循 Apache 2.0 许可证。
 
+## 🚀 新功能：姿态分析系统
+
+### 多帧验证姿态分析库
+基于ByteTrack的多帧验证姿态分析系统，提供身高检测、要球动作识别和ID优先级管理功能。
+
+#### 核心功能
+- **身高检测**: 多帧稳定性验证，支持中值/卡尔曼/移动平均滤波
+- **要球动作识别**: 连续帧确认机制，支持中断容忍
+- **ID优先级管理**: 基于ByteTrack ID的动态优先级调整
+
+#### 快速使用
+```cpp
+#include "pose_analyzer.h"
+
+// 创建分析器
+auto analyzer = pose_analysis::create_default_pose_analyzer();
+
+// 设置Homography矩阵
+analyzer->set_homography(homography_matrix);
+
+// 处理姿态结果
+std::vector<PoseResult> poses = /* ByteTrack输出 */;
+auto results = analyzer->analyze(poses);
+
+// 使用结果
+for (const auto& result : results) {
+    if (result.height_result.is_stable) {
+        printf("Person %d height: %.0fmm\n", 
+               result.id_priority_result.priority_id,
+               result.height_result.estimated_height_mm);
+    }
+    
+    if (result.ball_request_result.is_confirmed) {
+        printf("Person %d is requesting ball\n",
+               result.id_priority_result.priority_id);
+    }
+}
+```
+
+详细文档请查看 [姿态分析实施计划](docs/POSE_ANALYSIS_IMPLEMENTATION_PLAN_OPTIMIZED.md)
+
+**注意**: 姿态分析功能已完成实现但尚未测试。
+
 ## 🙏 致谢
 
 - **瑞芯微** - RKNN运行时和NPU支持
