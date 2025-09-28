@@ -193,6 +193,20 @@ set_target_properties(yolov8_pose_basketball PROPERTIES
 #     dl
 # )
 
+# Pose Analysis 模块 (可选)
+option(BUILD_POSE_ANALYSIS "Build pose analysis module" ON)
+if(BUILD_POSE_ANALYSIS)
+    message(STATUS "Building pose analysis module")
+    add_subdirectory(pose_analysis)
+endif()
+
+# Detector Lib 模块 (可选)  
+option(BUILD_DETECTOR_LIB "Build detector lib" ON)
+if(BUILD_DETECTOR_LIB)
+    message(STATUS "Building detector lib module")
+    add_subdirectory(detector_lib)
+endif()
+
 # 安装目标
 install(TARGETS yolov8_pose_basketball DESTINATION .)
 install(FILES models/yolov8_pose.rknn models/basketball_player_rk3588.rknn DESTINATION ./models) 

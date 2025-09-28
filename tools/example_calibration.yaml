@@ -1,0 +1,29 @@
+_metadata:
+  converted_at: '2025-08-29T11:31:09.921273'
+  converted_from: npz
+  converter_version: '1.0'
+camera_matrix:
+- - 800.0
+  - 0.0
+  - 640.0
+- - 0.0
+  - 800.0
+  - 360.0
+- - 0.0
+  - 0.0
+  - 1.0
+dist_coeffs:
+- -0.1
+- 0.05
+- 0.0
+- 0.0
+- 0.0
+reprojection_error: 0.25
+rvecs:
+- - 0.1
+- - 0.2
+- - 0.3
+tvecs:
+- - 100.0
+- - 200.0
+- - 300.0

@@ -9,7 +9,7 @@ int main() {
     std::cout << "=== 姿态检测+Homography坐标映射测试 ===" << std::endl;
     
     // 1. 创建检测器实例 (统一使用分发包路径约定)
-    const std::string model_path = "../models/Q_yolov8_pose.rknn";
+    const std::string model_path = "../../models/Q_yolov8_pose.rknn";
     PoseDetectorLib detector(model_path);
     
     std::cout << "✓ 检测器创建成功" << std::endl;

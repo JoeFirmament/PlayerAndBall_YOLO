@@ -8,6 +8,17 @@
 #include <fstream>
 #include <opencv2/opencv.hpp>
 
+#ifndef RKNPU1
+#include <Float16.h>
+#endif
+
+// 暂时移除工作版本依赖，专注于修复Float16问题
+
+// 添加反量化函数
+static float deqnt_affine_u8_to_f32(uint8_t qnt, int32_t zp, float scale) {
+    return ((float)qnt - (float)zp) * scale;
+}
+
 // 添加ByteTrack支持（编译开关控制）
 #ifdef DETECTOR_LIB_ENABLE_TRACKING
 #include "BYTETracker.h"
@@ -16,7 +27,7 @@
 // 添加Homography相关
 #include <opencv2/calib3d.hpp>
 
-// 添加姿态后处理需要的定义 (从pose_postprocess.h移植)
+// 添加必要的结构体定义
 #define OBJ_CLASS_NUM 1
 #define OBJ_NUMB_MAX_SIZE 128
 
@@ -79,6 +90,17 @@ public:
         int x_pad, y_pad;
         if (!letterbox_resize_to_npu(frame, &scale, &x_pad, &y_pad)) {
             return {};
+        }
+        
+        // 🔧 DEBUG: 打印letterbox参数和输出张量信息
+        printf("🔍 [DEBUG] letterbox参数: scale=%.4f, x_pad=%d, y_pad=%d, 图像大小=%dx%d\n", 
+               scale, x_pad, y_pad, frame.cols, frame.rows);
+        printf("🔍 [DEBUG] 输出张量信息:\n");
+        for (int i = 0; i < rknn_ctx_.io_num.n_output; i++) {
+            printf("  output[%d]: type=%d, fmt=%d, dims=[%d,%d,%d,%d]\n", 
+                   i, rknn_ctx_.output_attrs[i].type, rknn_ctx_.output_attrs[i].fmt,
+                   rknn_ctx_.output_attrs[i].dims[0], rknn_ctx_.output_attrs[i].dims[1], 
+                   rknn_ctx_.output_attrs[i].dims[2], rknn_ctx_.output_attrs[i].dims[3]);
         }
         
         // 2. NPU推理
@@ -457,7 +479,7 @@ private:
         letterbox.y_pad = y_pad;
         letterbox.scale = scale;
         
-        // 调用真正的姿态后处理函数
+        // 🔧 BUG FIX: 修复real_pose_post_process中的关键点解析问题
         object_detect_result_list pose_results;
         int ret = real_pose_post_process(outputs, &letterbox, conf_threshold_, 0.4f, &pose_results);
         
@@ -481,10 +503,20 @@ private:
                                        result->box.right - result->box.left,
                                        result->box.bottom - result->box.top);
             
-            // 17个关键点
+            // 17个关键点 - 修复：应用letterbox逆变换
             pose_result.keypoints.resize(17);
             pose_result.keypoint_scores.resize(17);
+            // 🔧 BUG FIX: 使用与工作版本相同的letterbox反变换
+            // 问题发现：detector_lib中关键点已经在后处理函数中进行了letterbox反变换
+            // 我们之前重复应用了变换！直接使用即可
             for (int j = 0; j < 17; j++) {
+                // 🔍 DEBUG: 打印前几个关键点的原始数据（只对第一个人）
+                if (i == 0 && j < 3) {
+                    printf("🔍 [DEBUG] kpt[%d]: raw=(%.1f,%.1f,%.1f)\n",
+                           j, result->keypoints[j][0], result->keypoints[j][1], result->keypoints[j][2]);
+                }
+                
+                // 直接使用，关键点在real_pose_post_process中已经正确处理了letterbox变换
                 pose_result.keypoints[j] = cv::Point2f(result->keypoints[j][0], result->keypoints[j][1]);
                 pose_result.keypoint_scores[j] = result->keypoints[j][2];
             }
@@ -593,22 +625,33 @@ private:
             int keypoints_index = (int)filterBoxes[n * 5 + 4];
             
             // 提取17个关键点 - 严格按照pose_postprocess.cc
+            printf("🔍 [DEBUG] is_quant=%s, keypoints_index=%d\n", 
+                   rknn_ctx_.is_quant ? "true" : "false", keypoints_index);
+            
             for (int j = 0; j < 17; ++j) {
-                if (rknn_ctx_.is_quant) {
-                    // 量化版本的关键点提取
-                    od_results->results[last_count].keypoints[j][0] = (deqnt_affine_to_f32(((int8_t*)_outputs[3].buf)[j*3*8400+0*8400+keypoints_index],
-                            rknn_ctx_.output_attrs[3].zp, rknn_ctx_.output_attrs[3].scale) - letter_box->x_pad) / letter_box->scale;
-                    od_results->results[last_count].keypoints[j][1] = (deqnt_affine_to_f32(((int8_t*)_outputs[3].buf)[j*3*8400+1*8400+keypoints_index],
-                            rknn_ctx_.output_attrs[3].zp, rknn_ctx_.output_attrs[3].scale) - letter_box->y_pad) / letter_box->scale;
-                    od_results->results[last_count].keypoints[j][2] = deqnt_affine_to_f32(((int8_t*)_outputs[3].buf)[j*3*8400+2*8400+keypoints_index],
-                            rknn_ctx_.output_attrs[3].zp, rknn_ctx_.output_attrs[3].scale);
-                } else {
-                    // 非量化版本的关键点提取
-                    od_results->results[last_count].keypoints[j][0] = (((float*)_outputs[3].buf)[j*3*8400+0*8400+keypoints_index] 
-                                                                    - letter_box->x_pad) / letter_box->scale;
-                    od_results->results[last_count].keypoints[j][1] = (((float*)_outputs[3].buf)[j*3*8400+1*8400+keypoints_index] 
-                                                                        - letter_box->y_pad) / letter_box->scale;
-                    od_results->results[last_count].keypoints[j][2] = ((float*)_outputs[3].buf)[j*3*8400+2*8400+keypoints_index];
+                // 🔧 CONFIRMED: RK3588 RKNPU2平台 + YOLOv8n-pose INT8量化，使用官方方式
+                #ifndef RKNPU1
+                // RKNPU2: 直接使用rknpu2::float16指针转换（官方#else分支）
+                od_results->results[last_count].keypoints[j][0] = ((float)((rknpu2::float16 *)_outputs[3].buf)[j*3*8400+0*8400+keypoints_index] 
+                                                                - letter_box->x_pad) / letter_box->scale;
+                od_results->results[last_count].keypoints[j][1] = ((float)((rknpu2::float16 *)_outputs[3].buf)[j*3*8400+1*8400+keypoints_index] 
+                                                                    - letter_box->y_pad) / letter_box->scale;
+                od_results->results[last_count].keypoints[j][2] = (float)((rknpu2::float16 *)_outputs[3].buf)[j*3*8400+2*8400+keypoints_index];
+                #else
+                // RKNPU1: 使用uint8_t反量化（官方#ifdef RKNPU1分支）
+                od_results->results[last_count].keypoints[j][0] = (deqnt_affine_u8_to_f32(((uint8_t *)_outputs[3].buf)[j * 3 * 8400 + 0 * 8400 + keypoints_index],
+                        rknn_ctx_.output_attrs[3].zp, rknn_ctx_.output_attrs[3].scale) - letter_box->x_pad) / letter_box->scale;
+                od_results->results[last_count].keypoints[j][1] = (deqnt_affine_u8_to_f32(((uint8_t *)_outputs[3].buf)[j * 3 * 8400 + 1 * 8400 + keypoints_index],
+                        rknn_ctx_.output_attrs[3].zp, rknn_ctx_.output_attrs[3].scale) - letter_box->y_pad) / letter_box->scale;
+                od_results->results[last_count].keypoints[j][2] = deqnt_affine_u8_to_f32(((uint8_t *)_outputs[3].buf)[j * 3 * 8400 + 2 * 8400 + keypoints_index],
+                        rknn_ctx_.output_attrs[3].zp, rknn_ctx_.output_attrs[3].scale);
+                #endif
+                
+                if (j < 3) {
+                    printf("🔍 [DEBUG] kpt[%d]: final=(%.1f,%.1f,%.1f)\n", j, 
+                           od_results->results[last_count].keypoints[j][0],
+                           od_results->results[last_count].keypoints[j][1], 
+                           od_results->results[last_count].keypoints[j][2]);
                 }
             }
             

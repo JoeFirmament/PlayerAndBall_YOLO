@@ -27,7 +27,7 @@ std::vector<BallRequestResult> BallRequestDetector::process_frame(const std::vec
     }
     
     // 清理过期的上下文
-    cleanup_stale_contexts();
+    cleanup_stale_contexts(3000);
     
     return results;
 }
@@ -95,7 +95,12 @@ bool BallRequestDetector::detect_raw_request(const PoseResult& pose, float& conf
     // 计算手势特征
     auto features = calculate_gesture_features(pose);
     
+    // 调试输出：要球检测详细参数
+    std::cout << "=== 要球检测调试 Person " << pose.person_id << " ===" << std::endl;
+    std::cout << "手势有效性: " << (features.gesture_valid ? "是" : "否") << std::endl;
+    
     if (!features.gesture_valid) {
+        std::cout << "  原因：缺少必要关键点或关键点置信度太低" << std::endl;
         return false;
     }
     
@@ -109,8 +114,27 @@ bool BallRequestDetector::detect_raw_request(const PoseResult& pose, float& conf
     // 计算置信度
     confidence = calculate_request_confidence(features);
     
-    return hands_close && hands_in_chest_area && height_appropriate && 
-           features.hands_in_front && confidence > 0.3f;
+    // 详细调试输出
+    std::cout << "双手距离: " << features.hands_distance_mm << "mm (限制: <=" << config_.max_hands_distance_mm << "mm)" << std::endl;
+    std::cout << "双手距离检查: " << (hands_close ? "通过" : "失败") << std::endl;
+    
+    std::cout << "手到胸部距离: " << features.hands_to_chest_distance << "mm" << std::endl;
+    std::cout << "胸部区域检查阈值: " << (config_.chest_region_scale * features.hands_distance_mm) << "mm" << std::endl;
+    std::cout << "胸部区域检查: " << (hands_in_chest_area ? "通过" : "失败") << std::endl;
+    
+    std::cout << "手高度比例: " << features.hand_height_ratio << " (范围: " 
+              << config_.min_hand_height_ratio << "-" << config_.max_hand_height_ratio << ")" << std::endl;
+    std::cout << "高度检查: " << (height_appropriate ? "通过" : "失败") << std::endl;
+    
+    std::cout << "双手在前方: " << (features.hands_in_front ? "是" : "否") << std::endl;
+    std::cout << "置信度: " << confidence << " (需要 >0.3)" << std::endl;
+    
+    bool final_result = hands_close && hands_in_chest_area && height_appropriate && 
+                       features.hands_in_front && confidence > 0.3f;
+    std::cout << "最终要球判断: " << (final_result ? "要球" : "不要球") << std::endl;
+    std::cout << "=========================================" << std::endl;
+    
+    return final_result;
 }
 
 BallRequestDetector::GestureFeatures BallRequestDetector::calculate_gesture_features(

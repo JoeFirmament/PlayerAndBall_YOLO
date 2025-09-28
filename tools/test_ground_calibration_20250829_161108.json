@@ -1,0 +1,28 @@
+{
+  "ground_homography": [
+    [
+      0.5,
+      0.0,
+      1000.0
+    ],
+    [
+      0.0,
+      0.5,
+      1500.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "reprojection_error": 0.8,
+  "board_params": {
+    "size": [
+      9,
+      6
+    ],
+    "square_size": 25.0
+  },
+  "calibration_results": {
+    "homography_matrix": 

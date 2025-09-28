@@ -474,7 +474,7 @@ bool PoseAnalyzer::save_config_to_file(const std::string& file_path) const {
     return true;
 }
 
-bool PoseAnalyzer::parse_config_from_json(const std::string& json_content, PoseAnalysisConfig& config) const {
+bool PoseAnalyzer::parse_config_from_json(const std::string& json_content, PoseAnalysisConfig& config) {
     try {
         Json::Value root;
         Json::Reader reader;
